@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useCallback } from 'react';
 import { GameState, EntityType, Player, Entity, Particle, CharacterTheme, LevelConfig } from '../types';
 import { 
@@ -380,36 +381,60 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.stroke();
   };
 
-  const drawLimb = (ctx: CanvasRenderingContext2D, w: number, h: number, outlineColor: string) => {
+  const drawLimb = (ctx: CanvasRenderingContext2D, w: number, h: number, color: string) => {
+      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.roundRect(-w/2, 0, w, h, w/2);
+      ctx.ellipse(0, h/2, w/2, h/2, 0, 0, Math.PI*2);
       ctx.fill();
-      ctx.fillStyle = outlineColor; 
+  };
+
+  const drawHat = (ctx: CanvasRenderingContext2D, hatColor: string, bandColor: string, lag: number) => {
+      // Hat Base
+      ctx.fillStyle = hatColor;
       ctx.beginPath();
-      ctx.rect(-w/2, h-2, w, 2);
+      ctx.ellipse(0, 0, 22, 6, 0, 0, Math.PI*2); // Brim
+      ctx.fill();
+      
+      // Hat Cone with physics lag
+      ctx.beginPath();
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(16, 0);
+      // The tip lags behind based on movement
+      ctx.quadraticCurveTo(0 - lag * 2, -20, 0 - lag * 4, -35); 
+      ctx.quadraticCurveTo(-5 - lag, -15, -16, 0);
+      ctx.fill();
+
+      // Band
+      ctx.fillStyle = bandColor;
+      ctx.beginPath();
+      ctx.rect(-14, -6, 28, 4);
+      ctx.fill();
+      
+      // Buckle/Decoration
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(0, -4, 3, 0, Math.PI*2);
       ctx.fill();
   };
 
   const drawTrails = (ctx: CanvasRenderingContext2D) => {
       trailsRef.current.forEach(trail => {
           ctx.save();
-          ctx.globalAlpha = trail.opacity;
+          ctx.globalAlpha = trail.opacity * 0.5;
           ctx.translate(trail.x + trail.width/2, trail.y + trail.height/2);
           ctx.rotate(trail.rotation);
           ctx.transform(1, 0, trail.skewX, 1, 0, 0);
           ctx.scale(trail.scaleX, trail.scaleY);
           ctx.fillStyle = trail.color;
-          const bodyW = 34;
-          const bodyH = 30;
-          const headW = 38;
-          const headH = 34;
+          
+          // Simplified Ghost Shape for Trail
           ctx.beginPath();
-          ctx.roundRect(-bodyW/2, -bodyH/2 + 5, bodyW, bodyH, 12);
+          ctx.ellipse(0, 5, 18, 14, 0, 0, Math.PI*2); // Body
           ctx.fill();
-          ctx.translate(0, -10);
           ctx.beginPath();
-          ctx.roundRect(-headW/2, -headH/2, headW, headH, 14);
+          ctx.ellipse(0, -10, 16, 14, 0, 0, Math.PI*2); // Head
           ctx.fill();
+          
           ctx.restore();
       });
       ctx.globalAlpha = 1.0;
@@ -439,10 +464,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const cy = p.y + p.height / 2;
     ctx.translate(cx, cy);
 
+    // Shield
     if (p.hasShield) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(0, 0, 40, 0, Math.PI * 2);
+        ctx.arc(0, 0, 45, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(96, 165, 250, 0.2)';
         ctx.fill();
         ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
@@ -453,8 +479,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
     }
     
-    if (!p.isGrounded) ctx.rotate(p.rotation); else ctx.rotate(p.rotation); 
+    // Rotation mainly for tumbling jump
+    if (!p.isGrounded) ctx.rotate(p.rotation); 
 
+    // Squash & Stretch Logic
     let scaleX = 1;
     let scaleY = 1;
     let translateY = 0;
@@ -463,8 +491,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (p.landTimer > 0) {
         const t = p.landTimer / 12; 
         const squash = Math.sin(t * Math.PI) * 0.5;
-        scaleX = 1 + squash * 0.5;
-        scaleY = 1 - squash * 0.5;
+        scaleX = 1 + squash * 0.4;
+        scaleY = 1 - squash * 0.4;
         skewX = -0.3 * Math.sin(t * Math.PI); 
         translateY = (p.height / 2) * (1 - scaleY);
     } else if (!p.isGrounded) {
@@ -473,7 +501,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const bounce = Math.sin(distance * 0.3) * 0.05;
         scaleX = 1 + bounce; scaleY = 1 - bounce;
         translateY = (p.height / 2) * (1 - scaleY);
-        skewX = -0.1;
+        skewX = -0.1; // Forward lean running
     }
     
     if (p.isSliding) {
@@ -488,126 +516,150 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     const runCycle = (distance * 0.4); 
     const isRunning = p.isGrounded && !p.isSliding && p.landTimer <= 0;
-    const bodyW = 34; const bodyH = 30;
-    const headW = 38; const headH = 34;
     
-    ctx.fillStyle = colors.dark;
+    // --- DRAW CAT ---
+
+    // 1. Back Leg
     ctx.save();
-    ctx.translate(-8, 10);
-    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle + Math.PI) * 0.6);
-    else if (!p.isGrounded) ctx.rotate(-0.5); 
-    drawLimb(ctx, 6, 10, colors.outline);
+    ctx.translate(-5, 10);
+    const legAngle = isRunning ? Math.sin(runCycle) * 0.8 : (p.isSliding ? 1.2 : -0.2);
+    ctx.rotate(legAngle);
+    drawLimb(ctx, 10, 16, colors.dark);
     ctx.restore();
 
+    // 2. Back Arm
     ctx.save();
-    ctx.translate(8, 10);
-    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle + Math.PI) * 0.6);
-    else if (!p.isGrounded) ctx.rotate(-0.5);
-    drawLimb(ctx, 6, 10, colors.outline);
+    ctx.translate(8, 5);
+    const armAngle = isRunning ? Math.sin(runCycle + Math.PI) * 0.8 : (p.isSliding ? 1.5 : -0.5);
+    ctx.rotate(armAngle);
+    drawLimb(ctx, 8, 14, colors.dark);
     ctx.restore();
-    
+
+    // 3. Tail (Wagging)
     if (!p.isSliding) {
         ctx.save();
-        ctx.translate(-bodyW/2, 5);
+        ctx.translate(-15, 8);
         ctx.beginPath();
-        ctx.strokeStyle = colors.dark;
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = colors.body;
+        ctx.lineWidth = 6;
         ctx.lineCap = 'round';
-        const tailBounce = Math.sin(runCycle * 2) * 2;
+        const tailWag = Math.sin(runCycle * 1.5) * 0.5;
+        ctx.rotate(tailWag - 0.5);
         ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(-10, -5 + tailBounce, -10, 10 + tailBounce, -2, 5);
+        ctx.quadraticCurveTo(-10, -5, -15, -10);
         ctx.stroke();
         ctx.restore();
     }
 
-    if (p.isSliding) {
-        ctx.save();
-        ctx.translate(-30, 0);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        const time = Date.now() / 50;
-        ctx.moveTo(Math.sin(time) * 5, -10); 
-        ctx.lineTo(25 + Math.sin(time) * 5, -10);
-        ctx.moveTo(-10 + Math.cos(time) * 5, 0); 
-        ctx.lineTo(15 + Math.cos(time) * 5, 0);
-        ctx.moveTo(5 + Math.sin(time + 1) * 5, 10); 
-        ctx.lineTo(30 + Math.sin(time + 1) * 5, 10);
-        ctx.stroke();
-        ctx.restore();
-    }
-
+    // 4. Body (Side View Oval)
     ctx.fillStyle = colors.body;
-    ctx.strokeStyle = colors.outline;
-    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.roundRect(-bodyW/2, -bodyH/2 + 5, bodyW, bodyH, 12);
+    // Ellipse body tilted slightly
+    ctx.ellipse(0, 5, 18, 14, -0.1, 0, Math.PI*2);
     ctx.fill();
-    ctx.stroke();
 
-    const headY = isRunning ? Math.sin(runCycle * 2) * 1.5 - 10 : -10;
-    ctx.save();
+    // Belly Patch
+    ctx.fillStyle = colors.belly;
+    ctx.beginPath();
+    ctx.ellipse(2, 6, 10, 8, -0.1, 0, Math.PI*2);
+    ctx.fill();
+
+    // 5. Head
+    const headY = -12;
     ctx.translate(0, headY);
-    const earAngle = isRunning ? Math.sin(runCycle) * 0.2 : 0;
     
-    ctx.save(); ctx.translate(-12, -12); ctx.rotate(-0.4 + earAngle);
-    ctx.fillStyle = colors.dark; ctx.beginPath(); ctx.roundRect(-5, -8, 10, 16, 5); ctx.fill(); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.translate(12, -12); ctx.rotate(0.4 - earAngle);
-    ctx.fillStyle = colors.dark; ctx.beginPath(); ctx.roundRect(-5, -8, 10, 16, 5); ctx.fill(); ctx.stroke(); ctx.restore();
+    // Ears
+    ctx.fillStyle = colors.body;
+    // Left Ear
+    ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(-12, -18); ctx.lineTo(-2, -12); ctx.fill();
+    // Right Ear
+    ctx.beginPath(); ctx.moveTo(8, -8); ctx.lineTo(12, -18); ctx.lineTo(2, -12); ctx.fill();
 
-    ctx.fillStyle = colors.body; ctx.beginPath(); ctx.roundRect(-headW/2, -headH/2, headW, headH, 14); ctx.fill(); ctx.stroke();
+    // Head Shape
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 18, 15, 0, 0, Math.PI*2);
+    ctx.fill();
 
-    if (theme.colors.accessory) {
-        ctx.fillStyle = theme.colors.accessory;
-        ctx.beginPath();
-        ctx.moveTo(-headW/2 - 2, -headH/2 + 10); ctx.lineTo(headW/2 + 2, -headH/2 + 10);
-        ctx.lineTo(headW/2 + 2, -headH/2 + 18); ctx.lineTo(-headW/2 - 2, -headH/2 + 18); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(headW/2 + 2, -headH/2 + 12); ctx.lineTo(headW/2 + 10, -headH/2 + 8); ctx.lineTo(headW/2 + 10, -headH/2 + 20); ctx.fill();
-    }
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.ellipse(-8, -10, 6, 3, -0.2, 0, Math.PI*2); ctx.fill();
-
-    const faceY = 2;
+    // Face Details (Side/3Q View)
+    const faceX = 6;
+    
+    // Eyes
     ctx.fillStyle = colors.face;
-    if (p.isSliding) {
-        ctx.lineWidth = 2.5; ctx.strokeStyle = colors.face;
-        ctx.beginPath(); ctx.moveTo(-11, faceY - 2); ctx.lineTo(-7, faceY + 1); ctx.lineTo(-11, faceY + 4);
-        ctx.moveTo(11, faceY - 2); ctx.lineTo(7, faceY + 1); ctx.lineTo(11, faceY + 4); ctx.stroke();
-    } else if (p.jumpCount >= 2) {
-        ctx.lineWidth = 2; ctx.strokeStyle = colors.face;
-        ctx.beginPath(); ctx.moveTo(-12, faceY - 2); ctx.lineTo(-8, faceY); ctx.lineTo(-12, faceY + 2);
-        ctx.moveTo(12, faceY - 2); ctx.lineTo(8, faceY); ctx.lineTo(12, faceY + 2); ctx.stroke();
+    if (p.isSliding || p.invincibleTimer > 0) {
+        // Squint
+        ctx.beginPath();
+        ctx.moveTo(faceX - 3, -2); ctx.lineTo(faceX, 0); ctx.lineTo(faceX - 3, 2);
+        ctx.stroke();
     } else {
-        ctx.beginPath(); ctx.ellipse(-8, faceY, 3.5, 4.5, 0, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(8, faceY, 3.5, 4.5, 0, 0, Math.PI*2); ctx.fill();
-        if (theme.id !== 'ninja') { 
-            ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-7, faceY - 1.5, 1.5, 0, Math.PI*2); ctx.arc(9, faceY - 1.5, 1.5, 0, Math.PI*2); ctx.fill();
+        // Open Eye
+        ctx.beginPath();
+        ctx.arc(faceX, -1, 2.5, 0, Math.PI*2);
+        ctx.fill();
+        // Highlight
+        if (theme.id !== 'ninja') {
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(faceX + 1, -2, 1, 0, Math.PI*2); ctx.fill();
         }
     }
 
-    ctx.fillStyle = colors.snout; ctx.beginPath(); ctx.ellipse(0, faceY + 6, 7, 5, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = colors.nostril; ctx.beginPath(); ctx.arc(-2.5, faceY + 6, 1.2, 0, Math.PI*2); ctx.arc(2.5, faceY + 6, 1.2, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = colors.cheek; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(-13, faceY + 5, 3, 0, Math.PI*2); ctx.arc(13, faceY + 5, 3, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
+    // Cheek
+    ctx.fillStyle = colors.cheek;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc(faceX - 2, 4, 3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
 
-    ctx.restore(); 
+    // Snout/Nose
+    ctx.fillStyle = colors.face; // Dark nose
+    ctx.beginPath();
+    ctx.ellipse(faceX + 4, 1, 1.5, 1, 0, 0, Math.PI*2);
+    ctx.fill();
 
-    ctx.fillStyle = colors.body; 
-    ctx.save(); ctx.translate(-9, 5);
-    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle) * 0.8);
-    else if (!p.isGrounded) ctx.rotate(-2.5);
-    drawLimb(ctx, 5, 9, colors.outline);
+    // Whiskers
+    ctx.strokeStyle = colors.dark;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(faceX + 4, 2); ctx.lineTo(faceX + 12, 0);
+    ctx.moveTo(faceX + 4, 3); ctx.lineTo(faceX + 12, 4);
+    ctx.stroke();
+
+    // HAT
+    const hatLag = (p.vx + (isRunning ? Math.sin(runCycle)*2 : 0)) * 0.1;
+    ctx.save();
+    ctx.translate(0, -12); // Top of head
+    ctx.rotate(0.1); // Tilt back slightly
+    drawHat(ctx, colors.hat, colors.hatBand, hatLag);
     ctx.restore();
 
-    ctx.save(); ctx.translate(9, 5);
-    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle) * 0.8);
-    else if (!p.isGrounded) ctx.rotate(-2.5);
-    drawLimb(ctx, 5, 9, colors.outline);
+    ctx.translate(0, -headY); // Reset head trans
+
+    // 6. Front Leg
+    ctx.save();
+    ctx.translate(-5, 10);
+    const frontLegAngle = isRunning ? Math.sin(runCycle + Math.PI) * 0.8 : (p.isSliding ? 1.2 : -0.2);
+    ctx.rotate(frontLegAngle);
+    drawLimb(ctx, 10, 16, colors.dark);
     ctx.restore();
+
+    // 7. Front Arm
+    ctx.save();
+    ctx.translate(8, 5);
+    const frontArmAngle = isRunning ? Math.sin(runCycle) * 0.8 : (p.isSliding ? 1.5 : -0.5);
+    ctx.rotate(frontArmAngle);
+    drawLimb(ctx, 8, 14, colors.dark);
+    ctx.restore();
+
+    // Sliding Dust/Wind
+    if (p.isSliding) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const time = Date.now() / 50;
+        ctx.moveTo(-20, 10); ctx.lineTo(-40 + Math.sin(time)*5, 10);
+        ctx.moveTo(-15, 0); ctx.lineTo(-35 + Math.cos(time)*5, 0);
+        ctx.stroke();
+    }
 
     ctx.restore(); 
     ctx.globalAlpha = 1.0; // Reset alpha

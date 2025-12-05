@@ -1,3 +1,4 @@
+
 export enum GameState {
   MENU = 'MENU',
   PLAYING = 'PLAYING',
@@ -67,14 +68,13 @@ export interface CharacterTheme {
   price: number; // Cost in coins
   colors: {
     body: string;
+    belly: string; // New: Belly color
     outline: string;
     dark: string; // Limbs/Shadows
-    light: string;
-    snout: string;
-    nostril: string;
-    face: string;
+    hat: string; // New: Hat main color
+    hatBand: string; // New: Hat band/accessory color
+    face: string; // Eye color
     cheek: string;
-    accessory?: string; // Bandana, etc.
   };
 }
 

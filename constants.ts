@@ -1,11 +1,12 @@
+
 import { CharacterTheme, LevelConfig } from "./types";
 
-export const GRAVITY = 1.2; // Increased for very fast, heavy falling
-export const JUMP_FORCE = -22; // Stronger jump to counteract high gravity
+export const GRAVITY = 1.2; 
+export const JUMP_FORCE = -22; 
 export const DOUBLE_JUMP_FORCE = -18; 
 export const GROUND_Y = 400; 
 export const GAME_SPEED_START = 5.0; 
-export const MAX_SPEED = 20.0; // Higher cap
+export const MAX_SPEED = 20.0; 
 export const MIN_OBSTACLE_GAP = 300; 
 
 export const MAGNET_DURATION = 1000; 
@@ -17,10 +18,10 @@ export const PLAYER_HEIGHT_SLIDING = 30;
 export const OBSTACLE_WIDTH = 35; 
 export const OBSTACLE_HEIGHT = 35;
 
-// Background Music (Lazy loaded in App.tsx)
+// Background Music
 export const BGM_URL = "https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3"; 
 
-// Share Image for social cards
+// Share Image
 export const SHARE_IMAGE_URL = "https://cdn.pixabay.com/photo/2022/10/05/20/43/hyacinth-macaw-7501470_1280.jpg";
 
 export const SHOP_ITEMS = {
@@ -67,9 +68,9 @@ export const LEVELS: LevelConfig[] = [
   },
   {
     id: 5,
-    targetStars: 60, // Changed from 100 to 60
-    baseSpeed: 15.0, // Extreme speed
-    minGap: 220, // Extreme density
+    targetStars: 60,
+    baseSpeed: 15.0, 
+    minGap: 220, 
     hasMovingObstacles: true,
     description: "极限挑战"
   }
@@ -78,58 +79,57 @@ export const LEVELS: LevelConfig[] = [
 export const CHARACTER_THEMES: Record<string, CharacterTheme> = {
   classic: {
     id: 'classic',
-    name: '小精灵',
+    name: '雨儿',
     ability: '幸运星: 金币分数翻倍',
     price: 0,
     colors: {
       body: '#fbcfe8', // Pink 200
+      belly: '#fdf2f8', // Pink 50
       outline: '#db2777', // Pink 600
       dark: '#f472b6', // Pink 400
-      light: '#fce7f3', 
-      snout: '#fce7f3', 
-      nostril: '#be185d', 
-      face: '#1f2937', 
-      cheek: '#f9a8d4',
+      hat: '#be185d', // Pink 700
+      hatBand: '#facc15', // Yellow 400
+      face: '#1e2937', 
+      cheek: '#fb7185',
     }
   },
   ninja: {
     id: 'ninja',
-    name: '忍者精灵',
+    name: '忍者喵',
     ability: '影之跃: 拥有三段跳能力',
     price: 500,
     colors: {
       body: '#334155', // Slate 700
+      belly: '#94a3b8', // Slate 400
       outline: '#0f172a', // Slate 900
       dark: '#1e293b', // Slate 800
-      light: '#475569', 
-      snout: '#94a3b8', 
-      nostril: '#0f172a', 
+      hat: '#0f172a', // Black
+      hatBand: '#ef4444', // Red
       face: '#ffffff', // White eyes
       cheek: '#64748b',
-      accessory: '#ef4444' // Red Bandana
     }
   },
   alien: {
     id: 'alien',
-    name: '外星精灵',
+    name: '星际喵',
     ability: '力场: 开局自带护盾',
     price: 1000,
     colors: {
-      body: '#86efac', // Green 300
-      outline: '#166534', // Green 800
-      dark: '#4ade80', // Green 400
-      light: '#bbf7d0', 
-      snout: '#bbf7d0', 
-      nostril: '#14532d', 
+      body: '#4ade80', // Green 400
+      belly: '#dcfce7', // Green 50
+      outline: '#15803d', // Green 700
+      dark: '#16a34a', // Green 600
+      hat: '#94a3b8', // Silver (Helmet)
+      hatBand: '#38bdf8', // Cyan Light
       face: '#000000', 
-      cheek: '#22c55e',
+      cheek: '#86efac',
     }
   }
 };
 
 export const THEME_COLORS = {
   // Default Fallback
-  player: '#fbcfe8',
+  player: '#fb923c',
   
   ground: '#ecfeff', // Cyan 50 - Fresher look
   groundHighlight: '#cffafe', // Cyan 100

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GameState, DailyMission, CharacterTheme, CharacterId, PlayerStats, LevelConfig } from '../types';
 import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight, ShoppingCart, Heart } from 'lucide-react';
@@ -27,31 +28,46 @@ interface UIOverlayProps {
 
 const CharacterAvatar = ({ theme }: { theme: CharacterTheme }) => (
     <div className="relative w-20 h-20 shrink-0">
-        <div className="absolute -top-1 left-1 w-5 h-6 rounded-lg origin-bottom -rotate-12 border-2" 
-             style={{ backgroundColor: theme.colors.dark, borderColor: theme.colors.outline }}></div>
-        <div className="absolute -top-1 right-1 w-5 h-6 rounded-lg origin-bottom rotate-12 border-2" 
-             style={{ backgroundColor: theme.colors.dark, borderColor: theme.colors.outline }}></div>
-        <div className="absolute inset-0 rounded-2xl border-2 overflow-hidden shadow-sm"
+        {/* Hat Tip (Background) */}
+        <div className="absolute -top-3 right-0 w-8 h-8 rounded-full origin-bottom rotate-[20deg]" 
+             style={{ backgroundColor: theme.colors.hat }}></div>
+
+        {/* Head */}
+        <div className="absolute top-4 left-2 w-16 h-14 rounded-full border-2 overflow-visible shadow-sm z-10"
              style={{ backgroundColor: theme.colors.body, borderColor: theme.colors.outline }}>
-             {theme.colors.accessory && (
-                 <div className="absolute top-6 left-0 w-full h-8 z-10" style={{ backgroundColor: theme.colors.accessory }}>
-                    <div className="absolute top-2 right-2 w-2 h-10 bg-red-900/20 rotate-12"></div>
-                 </div>
-             )}
-             <div className="absolute top-6 left-4 w-3 h-4 rounded-full z-20" style={{ backgroundColor: theme.colors.face }}>
-                 {theme.id !== 'ninja' && <div className="absolute top-1 left-1 w-1 h-1 bg-white rounded-full"></div>}
+             
+             {/* Left Ear */}
+             <div className="absolute -top-3 left-1 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[16px]"
+                 style={{ borderBottomColor: theme.colors.body }}></div>
+             {/* Right Ear */}
+             <div className="absolute -top-3 right-1 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-b-[16px]"
+                 style={{ borderBottomColor: theme.colors.body }}></div>
+             
+             {/* Eyes */}
+             <div className="absolute top-4 left-4 w-2 h-2 rounded-full z-20" style={{ backgroundColor: theme.colors.face }}>
+                 {theme.id !== 'ninja' && <div className="absolute top-0.5 left-0.5 w-0.5 h-0.5 bg-white rounded-full"></div>}
              </div>
-             <div className="absolute top-6 right-4 w-3 h-4 rounded-full z-20" style={{ backgroundColor: theme.colors.face }}>
-                 {theme.id !== 'ninja' && <div className="absolute top-1 left-1 w-1 h-1 bg-white rounded-full"></div>}
+             <div className="absolute top-4 right-4 w-2 h-2 rounded-full z-20" style={{ backgroundColor: theme.colors.face }}>
+                 {theme.id !== 'ninja' && <div className="absolute top-0.5 left-0.5 w-0.5 h-0.5 bg-white rounded-full"></div>}
              </div>
-             <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 w-10 h-7 rounded-full z-20 border"
-                  style={{ backgroundColor: theme.colors.snout, borderColor: 'rgba(0,0,0,0.1)' }}>
-                  <div className="absolute top-2 left-2 w-2 h-2 rounded-full" style={{ backgroundColor: theme.colors.nostril }}></div>
-                  <div className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ backgroundColor: theme.colors.nostril }}></div>
-             </div>
-             <div className="absolute bottom-5 left-1 w-4 h-2 bg-pink-400/30 rounded-full blur-[1px] z-10"></div>
-             <div className="absolute bottom-5 right-1 w-4 h-2 bg-pink-400/30 rounded-full blur-[1px] z-10"></div>
+             
+             {/* Cheeks */}
+             <div className="absolute top-6 left-2 w-3 h-1.5 bg-pink-400/30 rounded-full blur-[1px] z-10"></div>
+             <div className="absolute top-6 right-2 w-3 h-1.5 bg-pink-400/30 rounded-full blur-[1px] z-10"></div>
+             
+             {/* Nose */}
+             <div className="absolute top-5 left-1/2 -translate-x-1/2 w-2 h-1.5 rounded-full" style={{ backgroundColor: theme.colors.face }}></div>
         </div>
+        
+        {/* Hat (Foreground) */}
+        <div className="absolute -top-2 left-0 w-20 h-6 z-20" style={{ backgroundColor: theme.colors.hat, borderRadius: '50%' }}></div>
+        <div className="absolute -top-12 left-4 w-12 h-16 z-10" 
+             style={{ 
+                 background: `conic-gradient(from 150deg at 50% 100%, ${theme.colors.hat} 0deg, ${theme.colors.hat} 60deg, transparent 60deg)` 
+             }}></div>
+        <div className="absolute top-0 left-4 w-12 h-2 z-20" style={{ backgroundColor: theme.colors.hatBand }}></div>
+        {/* Star on hat */}
+        <div className="absolute -top-2 left-8 w-2 h-2 bg-yellow-300 rounded-full z-30 shadow-sm animate-pulse"></div>
     </div>
 );
 
@@ -227,7 +243,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                 onClick={() => setShowCharSelect(true)}
                 className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
                 >
-                <span className="text-2xl">🐷</span>
+                <span className="text-2xl">😺</span>
                 <span className="text-xs uppercase tracking-wide">角色</span>
                 </button>
             </div>

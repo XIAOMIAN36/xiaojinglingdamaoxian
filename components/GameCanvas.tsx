@@ -789,7 +789,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 // SPECIAL OBSTACLE CHECK (Level 3+)
                 const projectileChance = levelConfig.id >= 3 ? 0.15 : 0; // Reduced to 0.15
                 const phasingChance = levelConfig.id >= 4 ? 0.12 : 0; // Reduced to 0.12
-                const airObstacleChance = 0.3; // Increased to 0.3
+                
+                // --- MODIFIED LOGIC START ---
+                // Increase chance of Air Spawns (Obstacles/Stars) in Level 3+
+                let airObstacleChance = 0.3;
+                if (levelConfig.id >= 3) airObstacleChance = 0.5;
+                // --- MODIFIED LOGIC END ---
 
                 // PREVENT CONSECUTIVE PROJECTILES
                 const lastWasProjectile = lastObstacle && lastObstacle.subtype === 'PROJECTILE';
@@ -808,8 +813,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     color = THEME_COLORS.phasingVisible;
                 } else if (typeVal > (1 - airObstacleChance)) {
                   // AIR ENTITY SPAWN (Obstacles OR Stars for Double Jump)
-                  const isHighJump = Math.random() > 0.4;
-                  yPos = isHighJump ? groundY - 190 : groundY - 120;
+                  
+                  // --- MODIFIED LOGIC START ---
+                  // Force High Jump more often in Level 3+
+                  const highJumpThreshold = levelConfig.id >= 3 ? 0.3 : 0.4;
+                  const isHighJump = Math.random() > highJumpThreshold;
+                  
+                  // If it's a high jump, put it high enough to require double jump (groundY - 240)
+                  // Low jump is groundY - 120
+                  yPos = isHighJump ? groundY - 240 : groundY - 120;
+                  // --- MODIFIED LOGIC END ---
                   
                   // Star Reward Chance Increased from 40% to 60%
                   const isStarReward = Math.random() < 0.6;

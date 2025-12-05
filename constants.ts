@@ -67,7 +67,7 @@ export const LEVELS: LevelConfig[] = [
   },
   {
     id: 5,
-    targetStars: 100, // Endless challenge basically
+    targetStars: 60, // Changed from 100 to 60
     baseSpeed: 15.0, // Extreme speed
     minGap: 220, // Extreme density
     hasMovingObstacles: true,

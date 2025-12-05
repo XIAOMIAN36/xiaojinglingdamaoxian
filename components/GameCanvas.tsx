@@ -60,6 +60,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
+  const lastFrameTimeRef = useRef<number>(0);
   
   // Game State Refs
   const scoreRef = useRef(0);
@@ -115,6 +116,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     distanceRef.current = 0;
     gameSpeedRef.current = levelConfig.baseSpeed;
     frameCountRef.current = 0;
+    lastFrameTimeRef.current = 0;
     
     const groundY = canvas.height - 100;
     
@@ -266,7 +268,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         createDustParticles(p.x + p.width / 2, p.y + p.height, 5); // Slide Dust
         playSfx('slide');
       } else if (!p.isGrounded) {
-        p.vy = 12; // Fast drop
+        p.vy = 15; // Fast drop
       }
     }
   }, [gameState, activeTheme, playSfx]);
@@ -286,9 +288,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     // --- Mobile Touch Logic (Tap to Jump, Swipe Down to Slide) ---
     const handleTouchStart = (e: TouchEvent) => {
         if (gameState === GameState.PAUSED) return;
-        // Do not prevent default to allow browser UI to work, only prevent if in gameplay?
-        // Actually for game canvas we usually want to prevent default scrolling
-        // e.preventDefault(); 
         
         touchStartRef.current = {
             x: e.touches[0].clientX,
@@ -339,9 +338,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    // Use passive: false if we want to prevent default (scrolling)
-    // But since we have user-scalable=no in meta, we might be fine.
-    // Adding to window can be tricky.
     window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
     return () => {
@@ -351,6 +347,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, [handleInput, gameState]);
 
+  // Drawing Helper Functions...
   const drawStar = (ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) => {
       let rot = Math.PI / 2 * 3;
       let x = cx;
@@ -374,316 +371,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-  };
-
-  const drawCharacter = (ctx: CanvasRenderingContext2D, p: Player, distance: number, theme: CharacterTheme) => {
-    const colors = theme.colors;
-    
-    // --- SHADOW ---
-    const groundY = ctx.canvas.height - 100;
-    const shadowScale = 1 - Math.min((groundY - (p.y + p.height)) / 200, 0.6);
-    const cx = p.x + p.width / 2;
-    
-    if (p.y + p.height < groundY + 50) { 
-        ctx.fillStyle = THEME_COLORS.shadow;
-        ctx.beginPath();
-        ctx.ellipse(cx, groundY + 5, (p.width/2) * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    ctx.save();
-    
-    // Position center
-    const cy = p.y + p.height / 2;
-    
-    ctx.translate(cx, cy);
-
-    // Shield Visual
-    if (p.hasShield) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(0, 0, 40, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(96, 165, 250, 0.2)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.rotate(distance * 0.05); 
-        ctx.stroke();
-        ctx.restore();
-    }
-    
-    // Rotation logic
-    if (!p.isGrounded) {
-       ctx.rotate(p.rotation);
-    } else {
-       ctx.rotate(p.rotation); 
-    }
-
-    // Squash & Stretch Logic with Inertia (Skewing)
-    let scaleX = 1;
-    let scaleY = 1;
-    let translateY = 0;
-    let skewX = 0;
-    
-    if (p.landTimer > 0) {
-        // Landing Impact (Inertia)
-        const t = p.landTimer / 12; // 0 to 1 scale roughly
-        const squash = Math.sin(t * Math.PI) * 0.5; // Squash factor
-        scaleX = 1 + squash * 0.5; // Wider
-        scaleY = 1 - squash * 0.5; // Shorter
-        
-        // FORWARD INERTIA: Skew the character forward when landing
-        skewX = -0.3 * Math.sin(t * Math.PI); 
-        translateY = (p.height / 2) * (1 - scaleY);
-    } else if (!p.isGrounded) {
-        scaleX = 0.9; 
-        scaleY = 1.1; 
-    } else {
-        // Running Bounce
-        const bounce = Math.sin(distance * 0.3) * 0.05;
-        scaleX = 1 + bounce;
-        scaleY = 1 - bounce;
-        translateY = (p.height / 2) * (1 - scaleY);
-        skewX = -0.1;
-    }
-    
-    if (p.isSliding) {
-        scaleY = 0.6;
-        scaleX = 1.3;
-        translateY = (p.height / 2) * (1 - scaleY);
-        skewX = -0.4; // heavy lean when sliding
-    }
-
-    ctx.translate(0, translateY);
-    ctx.transform(1, 0, skewX, 1, 0, 0);
-    ctx.scale(scaleX, scaleY);
-
-    const runCycle = (distance * 0.4); 
-    const isRunning = p.isGrounded && !p.isSliding && p.landTimer <= 0;
-    
-    const bodyW = 34;
-    const bodyH = 30;
-    const headW = 38;
-    const headH = 34;
-    
-    // --- LIMBS (Behind Body) ---
-    ctx.fillStyle = colors.dark;
-    
-    ctx.save();
-    ctx.translate(-8, 10);
-    if (p.isSliding) {
-        ctx.translate(4, 4);
-        ctx.rotate(-1.4); // Slide leg forward
-    }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle + Math.PI) * 0.6);
-    else if (!p.isGrounded) ctx.rotate(-0.5); 
-    drawLimb(ctx, 6, 10, colors.outline);
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(8, 10);
-    if (p.isSliding) {
-        ctx.translate(4, 4);
-        ctx.rotate(-1.4); // Slide leg forward
-    }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle + Math.PI) * 0.6);
-    else if (!p.isGrounded) ctx.rotate(-0.5);
-    drawLimb(ctx, 6, 10, colors.outline);
-    ctx.restore();
-    
-    // Tail
-    if (!p.isSliding) {
-        ctx.save();
-        ctx.translate(-bodyW/2, 5);
-        ctx.beginPath();
-        ctx.strokeStyle = colors.dark;
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        const tailBounce = Math.sin(runCycle * 2) * 2;
-        ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(-10, -5 + tailBounce, -10, 10 + tailBounce, -2, 5);
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    // Speed Lines Effect (Sliding)
-    if (p.isSliding) {
-        ctx.save();
-        ctx.translate(-30, 0);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        const time = Date.now() / 50;
-        ctx.moveTo(Math.sin(time) * 5, -10); 
-        ctx.lineTo(25 + Math.sin(time) * 5, -10);
-        ctx.moveTo(-10 + Math.cos(time) * 5, 0); 
-        ctx.lineTo(15 + Math.cos(time) * 5, 0);
-        ctx.moveTo(5 + Math.sin(time + 1) * 5, 10); 
-        ctx.lineTo(30 + Math.sin(time + 1) * 5, 10);
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    // --- BODY ---
-    ctx.fillStyle = colors.body;
-    ctx.strokeStyle = colors.outline;
-    ctx.lineWidth = 2.5;
-
-    ctx.beginPath();
-    ctx.roundRect(-bodyW/2, -bodyH/2 + 5, bodyW, bodyH, 12);
-    ctx.fill();
-    ctx.stroke();
-
-    // --- HEAD ---
-    const headY = isRunning ? Math.sin(runCycle * 2) * 1.5 - 10 : -10;
-    ctx.save();
-    ctx.translate(0, headY);
-    
-    const earAngle = isRunning ? Math.sin(runCycle) * 0.2 : 0;
-    
-    // Ears
-    ctx.save();
-    ctx.translate(-12, -12);
-    ctx.rotate(-0.4 + earAngle);
-    ctx.fillStyle = colors.dark;
-    ctx.beginPath();
-    ctx.roundRect(-5, -8, 10, 16, 5);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(12, -12);
-    ctx.rotate(0.4 - earAngle);
-    ctx.fillStyle = colors.dark;
-    ctx.beginPath();
-    ctx.roundRect(-5, -8, 10, 16, 5);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // Head Shape
-    ctx.fillStyle = colors.body;
-    ctx.beginPath();
-    ctx.roundRect(-headW/2, -headH/2, headW, headH, 14);
-    ctx.fill();
-    ctx.stroke();
-
-    // Accessory (Bandana)
-    if (theme.colors.accessory) {
-        ctx.fillStyle = theme.colors.accessory;
-        ctx.beginPath();
-        ctx.moveTo(-headW/2 - 2, -headH/2 + 10);
-        ctx.lineTo(headW/2 + 2, -headH/2 + 10);
-        ctx.lineTo(headW/2 + 2, -headH/2 + 18);
-        ctx.lineTo(-headW/2 - 2, -headH/2 + 18);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(headW/2 + 2, -headH/2 + 12);
-        ctx.lineTo(headW/2 + 10, -headH/2 + 8);
-        ctx.lineTo(headW/2 + 10, -headH/2 + 20);
-        ctx.fill();
-    }
-
-    // Gloss
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.beginPath();
-    ctx.ellipse(-8, -10, 6, 3, -0.2, 0, Math.PI*2);
-    ctx.fill();
-
-    // Face
-    const faceY = 2;
-    ctx.fillStyle = colors.face;
-    
-    if (p.isSliding) {
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = colors.face;
-        ctx.beginPath();
-        ctx.moveTo(-11, faceY - 2);
-        ctx.lineTo(-7, faceY + 1);
-        ctx.lineTo(-11, faceY + 4);
-        ctx.moveTo(11, faceY - 2);
-        ctx.lineTo(7, faceY + 1);
-        ctx.lineTo(11, faceY + 4);
-        ctx.stroke();
-    } else if (p.jumpCount >= 2) {
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = colors.face;
-        ctx.beginPath();
-        ctx.moveTo(-12, faceY - 2);
-        ctx.lineTo(-8, faceY);
-        ctx.lineTo(-12, faceY + 2);
-        ctx.moveTo(12, faceY - 2);
-        ctx.lineTo(8, faceY);
-        ctx.lineTo(12, faceY + 2);
-        ctx.stroke();
-    } else {
-        ctx.beginPath();
-        ctx.ellipse(-8, faceY, 3.5, 4.5, 0, 0, Math.PI*2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(8, faceY, 3.5, 4.5, 0, 0, Math.PI*2);
-        ctx.fill();
-        
-        if (theme.id !== 'ninja') { 
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(-7, faceY - 1.5, 1.5, 0, Math.PI*2);
-            ctx.arc(9, faceY - 1.5, 1.5, 0, Math.PI*2);
-            ctx.fill();
-        }
-    }
-
-    // Snout
-    ctx.fillStyle = colors.snout;
-    ctx.beginPath();
-    ctx.ellipse(0, faceY + 6, 7, 5, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle = colors.nostril;
-    ctx.beginPath();
-    ctx.arc(-2.5, faceY + 6, 1.2, 0, Math.PI*2);
-    ctx.arc(2.5, faceY + 6, 1.2, 0, Math.PI*2);
-    ctx.fill();
-
-    // Cheeks
-    ctx.fillStyle = colors.cheek;
-    ctx.globalAlpha = 0.6;
-    ctx.beginPath();
-    ctx.arc(-13, faceY + 5, 3, 0, Math.PI*2);
-    ctx.arc(13, faceY + 5, 3, 0, Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
-
-    ctx.restore(); // End Head
-
-    // --- LIMBS (Front) ---
-    ctx.fillStyle = colors.body; 
-    
-    ctx.save();
-    ctx.translate(-9, 5);
-    if (p.isSliding) {
-        ctx.translate(4, 4);
-        ctx.rotate(-1.4);
-    }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle) * 0.8);
-    else if (!p.isGrounded) ctx.rotate(-2.5);
-    drawLimb(ctx, 5, 9, colors.outline);
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(9, 5);
-    if (p.isSliding) {
-        ctx.translate(4, 4);
-        ctx.rotate(-1.4);
-    }
-    else if (isRunning) ctx.rotate(Math.sin(runCycle) * 0.8);
-    else if (!p.isGrounded) ctx.rotate(-2.5);
-    drawLimb(ctx, 5, 9, colors.outline);
-    ctx.restore();
-
-    ctx.restore(); // End Player Transform
   };
 
   const drawLimb = (ctx: CanvasRenderingContext2D, w: number, h: number, outlineColor: string) => {
@@ -721,11 +408,206 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.globalAlpha = 1.0;
   };
 
-  const tick = useCallback(() => {
+  const drawCharacter = (ctx: CanvasRenderingContext2D, p: Player, distance: number, theme: CharacterTheme) => {
+    const colors = theme.colors;
+    const groundY = ctx.canvas.height - 100;
+    const shadowScale = 1 - Math.min((groundY - (p.y + p.height)) / 200, 0.6);
+    const cx = p.x + p.width / 2;
+    
+    if (p.y + p.height < groundY + 50) { 
+        ctx.fillStyle = THEME_COLORS.shadow;
+        ctx.beginPath();
+        ctx.ellipse(cx, groundY + 5, (p.width/2) * shadowScale, 6 * shadowScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.save();
+    const cy = p.y + p.height / 2;
+    ctx.translate(cx, cy);
+
+    if (p.hasShield) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, 40, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(96, 165, 250, 0.2)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.rotate(distance * 0.05); 
+        ctx.stroke();
+        ctx.restore();
+    }
+    
+    if (!p.isGrounded) ctx.rotate(p.rotation); else ctx.rotate(p.rotation); 
+
+    let scaleX = 1;
+    let scaleY = 1;
+    let translateY = 0;
+    let skewX = 0;
+    
+    if (p.landTimer > 0) {
+        const t = p.landTimer / 12; 
+        const squash = Math.sin(t * Math.PI) * 0.5;
+        scaleX = 1 + squash * 0.5;
+        scaleY = 1 - squash * 0.5;
+        skewX = -0.3 * Math.sin(t * Math.PI); 
+        translateY = (p.height / 2) * (1 - scaleY);
+    } else if (!p.isGrounded) {
+        scaleX = 0.9; scaleY = 1.1; 
+    } else {
+        const bounce = Math.sin(distance * 0.3) * 0.05;
+        scaleX = 1 + bounce; scaleY = 1 - bounce;
+        translateY = (p.height / 2) * (1 - scaleY);
+        skewX = -0.1;
+    }
+    
+    if (p.isSliding) {
+        scaleY = 0.6; scaleX = 1.3;
+        translateY = (p.height / 2) * (1 - scaleY);
+        skewX = -0.4;
+    }
+
+    ctx.translate(0, translateY);
+    ctx.transform(1, 0, skewX, 1, 0, 0);
+    ctx.scale(scaleX, scaleY);
+
+    const runCycle = (distance * 0.4); 
+    const isRunning = p.isGrounded && !p.isSliding && p.landTimer <= 0;
+    const bodyW = 34; const bodyH = 30;
+    const headW = 38; const headH = 34;
+    
+    ctx.fillStyle = colors.dark;
+    ctx.save();
+    ctx.translate(-8, 10);
+    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
+    else if (isRunning) ctx.rotate(Math.sin(runCycle + Math.PI) * 0.6);
+    else if (!p.isGrounded) ctx.rotate(-0.5); 
+    drawLimb(ctx, 6, 10, colors.outline);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(8, 10);
+    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
+    else if (isRunning) ctx.rotate(Math.sin(runCycle + Math.PI) * 0.6);
+    else if (!p.isGrounded) ctx.rotate(-0.5);
+    drawLimb(ctx, 6, 10, colors.outline);
+    ctx.restore();
+    
+    if (!p.isSliding) {
+        ctx.save();
+        ctx.translate(-bodyW/2, 5);
+        ctx.beginPath();
+        ctx.strokeStyle = colors.dark;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        const tailBounce = Math.sin(runCycle * 2) * 2;
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-10, -5 + tailBounce, -10, 10 + tailBounce, -2, 5);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    if (p.isSliding) {
+        ctx.save();
+        ctx.translate(-30, 0);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        const time = Date.now() / 50;
+        ctx.moveTo(Math.sin(time) * 5, -10); 
+        ctx.lineTo(25 + Math.sin(time) * 5, -10);
+        ctx.moveTo(-10 + Math.cos(time) * 5, 0); 
+        ctx.lineTo(15 + Math.cos(time) * 5, 0);
+        ctx.moveTo(5 + Math.sin(time + 1) * 5, 10); 
+        ctx.lineTo(30 + Math.sin(time + 1) * 5, 10);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.fillStyle = colors.body;
+    ctx.strokeStyle = colors.outline;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(-bodyW/2, -bodyH/2 + 5, bodyW, bodyH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    const headY = isRunning ? Math.sin(runCycle * 2) * 1.5 - 10 : -10;
+    ctx.save();
+    ctx.translate(0, headY);
+    const earAngle = isRunning ? Math.sin(runCycle) * 0.2 : 0;
+    
+    ctx.save(); ctx.translate(-12, -12); ctx.rotate(-0.4 + earAngle);
+    ctx.fillStyle = colors.dark; ctx.beginPath(); ctx.roundRect(-5, -8, 10, 16, 5); ctx.fill(); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(12, -12); ctx.rotate(0.4 - earAngle);
+    ctx.fillStyle = colors.dark; ctx.beginPath(); ctx.roundRect(-5, -8, 10, 16, 5); ctx.fill(); ctx.stroke(); ctx.restore();
+
+    ctx.fillStyle = colors.body; ctx.beginPath(); ctx.roundRect(-headW/2, -headH/2, headW, headH, 14); ctx.fill(); ctx.stroke();
+
+    if (theme.colors.accessory) {
+        ctx.fillStyle = theme.colors.accessory;
+        ctx.beginPath();
+        ctx.moveTo(-headW/2 - 2, -headH/2 + 10); ctx.lineTo(headW/2 + 2, -headH/2 + 10);
+        ctx.lineTo(headW/2 + 2, -headH/2 + 18); ctx.lineTo(-headW/2 - 2, -headH/2 + 18); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(headW/2 + 2, -headH/2 + 12); ctx.lineTo(headW/2 + 10, -headH/2 + 8); ctx.lineTo(headW/2 + 10, -headH/2 + 20); ctx.fill();
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.beginPath(); ctx.ellipse(-8, -10, 6, 3, -0.2, 0, Math.PI*2); ctx.fill();
+
+    const faceY = 2;
+    ctx.fillStyle = colors.face;
+    if (p.isSliding) {
+        ctx.lineWidth = 2.5; ctx.strokeStyle = colors.face;
+        ctx.beginPath(); ctx.moveTo(-11, faceY - 2); ctx.lineTo(-7, faceY + 1); ctx.lineTo(-11, faceY + 4);
+        ctx.moveTo(11, faceY - 2); ctx.lineTo(7, faceY + 1); ctx.lineTo(11, faceY + 4); ctx.stroke();
+    } else if (p.jumpCount >= 2) {
+        ctx.lineWidth = 2; ctx.strokeStyle = colors.face;
+        ctx.beginPath(); ctx.moveTo(-12, faceY - 2); ctx.lineTo(-8, faceY); ctx.lineTo(-12, faceY + 2);
+        ctx.moveTo(12, faceY - 2); ctx.lineTo(8, faceY); ctx.lineTo(12, faceY + 2); ctx.stroke();
+    } else {
+        ctx.beginPath(); ctx.ellipse(-8, faceY, 3.5, 4.5, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(8, faceY, 3.5, 4.5, 0, 0, Math.PI*2); ctx.fill();
+        if (theme.id !== 'ninja') { 
+            ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-7, faceY - 1.5, 1.5, 0, Math.PI*2); ctx.arc(9, faceY - 1.5, 1.5, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
+    ctx.fillStyle = colors.snout; ctx.beginPath(); ctx.ellipse(0, faceY + 6, 7, 5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = colors.nostril; ctx.beginPath(); ctx.arc(-2.5, faceY + 6, 1.2, 0, Math.PI*2); ctx.arc(2.5, faceY + 6, 1.2, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = colors.cheek; ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(-13, faceY + 5, 3, 0, Math.PI*2); ctx.arc(13, faceY + 5, 3, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0;
+
+    ctx.restore(); 
+
+    ctx.fillStyle = colors.body; 
+    ctx.save(); ctx.translate(-9, 5);
+    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
+    else if (isRunning) ctx.rotate(Math.sin(runCycle) * 0.8);
+    else if (!p.isGrounded) ctx.rotate(-2.5);
+    drawLimb(ctx, 5, 9, colors.outline);
+    ctx.restore();
+
+    ctx.save(); ctx.translate(9, 5);
+    if (p.isSliding) { ctx.translate(4, 4); ctx.rotate(-1.4); }
+    else if (isRunning) ctx.rotate(Math.sin(runCycle) * 0.8);
+    else if (!p.isGrounded) ctx.rotate(-2.5);
+    drawLimb(ctx, 5, 9, colors.outline);
+    ctx.restore();
+
+    ctx.restore(); 
+  };
+
+  const tick = useCallback((time: number) => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    if (!lastFrameTimeRef.current) lastFrameTimeRef.current = time;
+    // Cap delta time to prevent massive jumps if frame drops or tab is inactive
+    const deltaTime = Math.min((time - lastFrameTimeRef.current) / 16.67, 2.5);
+    lastFrameTimeRef.current = time;
 
     const isPaused = gameState === GameState.PAUSED || gameState === GameState.LEVEL_COMPLETE;
     const isMenu = gameState === GameState.MENU;
@@ -734,9 +616,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (!isPaused) {
       frameCountRef.current++;
       
-      // Menu Mode
       if (isMenu) {
-         distanceRef.current += levelConfig.baseSpeed;
+         distanceRef.current += levelConfig.baseSpeed * deltaTime;
          const p = playerRef.current;
          p.y = canvas.height - 100 - p.height; 
          p.x = canvas.width / 2 - p.width / 2;
@@ -745,44 +626,42 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
          
          const groundY = canvas.height - 100;
          hillsRef.current.forEach(h => {
-             h.x -= levelConfig.baseSpeed * 0.1;
+             h.x -= (levelConfig.baseSpeed * 0.1) * deltaTime;
              if (h.x + h.w < 0) { h.x = canvas.width + 100; h.h = 100 + Math.random() * 150; }
          });
          treesRef.current.forEach(t => {
-             t.x -= levelConfig.baseSpeed * 0.5;
+             t.x -= (levelConfig.baseSpeed * 0.5) * deltaTime;
              if (t.x + t.w < 0) { t.x = canvas.width + 50 + Math.random() * 100; t.h = 60 + Math.random() * 40; }
          });
-         if (Math.random() < 0.15) spawnGroundDecor(canvas.width + 50, groundY); 
-         groundDecorRef.current.forEach(d => { d.x -= levelConfig.baseSpeed; });
+         if (Math.random() < 0.15 * deltaTime) spawnGroundDecor(canvas.width + 50, groundY); 
+         groundDecorRef.current.forEach(d => { d.x -= levelConfig.baseSpeed * deltaTime; });
          groundDecorRef.current = groundDecorRef.current.filter(d => d.x > -50);
-         cloudsRef.current.forEach(c => { c.x -= c.s; if (c.x + c.w + 50 < 0) c.x = canvas.width + 50; });
+         cloudsRef.current.forEach(c => { c.x -= c.s * deltaTime; if (c.x + c.w + 50 < 0) c.x = canvas.width + 50; });
       }
 
       if (isPlaying) {
         const p = playerRef.current;
         const groundY = canvas.height - 100;
         
-        coinRotationRef.current += 0.05;
+        coinRotationRef.current += 0.05 * deltaTime;
         const wasGrounded = p.isGrounded;
 
-        // --- Physics ---
-        p.vy += GRAVITY;
-        p.y += p.vy;
+        // --- Physics (Apply Delta Time) ---
+        p.vy += GRAVITY * deltaTime;
+        p.y += p.vy * deltaTime;
 
         const baseX = canvas.width * 0.1;
         const airBias = 40; 
         const targetX = p.isGrounded ? baseX : baseX + airBias;
-        p.x += (targetX - p.x) * 0.05;
+        p.x += (targetX - p.x) * 0.05 * deltaTime;
 
-        // Rotation
         if (p.isGrounded) {
           p.rotation = p.rotation * 0.7; 
         } else {
            const spinSpeed = p.jumpCount >= 2 ? 0.25 : 0.15;
-           p.rotation += spinSpeed;
+           p.rotation += spinSpeed * deltaTime;
         }
 
-        // Ground Collision
         if (p.y + p.height >= groundY) {
           p.y = groundY - p.height;
           p.vy = 0;
@@ -797,15 +676,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           p.isGrounded = false;
         }
         
-        if (p.landTimer > 0) p.landTimer--;
+        if (p.landTimer > 0) p.landTimer -= deltaTime;
 
-        // Sliding
         if (p.isSliding) {
           p.height = PLAYER_HEIGHT_SLIDING;
           p.y = groundY - PLAYER_HEIGHT_SLIDING;
-          p.slideTimer--;
+          p.slideTimer -= deltaTime;
           p.rotation = 0; 
-          if (frameCountRef.current % 4 === 0) createDustParticles(p.x, p.y + p.height, 1);
+          if (Math.floor(frameCountRef.current % 4) === 0) createDustParticles(p.x, p.y + p.height, 1);
           if (p.slideTimer <= 0) {
             p.isSliding = false;
             p.height = PLAYER_HEIGHT_STANDING;
@@ -816,15 +694,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         if (p.magnetTimer > 0) {
-            p.magnetTimer--;
+            p.magnetTimer -= deltaTime;
             onMagnetUpdate(p.magnetTimer / MAGNET_DURATION);
         } else {
-             if (p.magnetTimer === 0 && frameCountRef.current % 60 === 0) {
+             if (p.magnetTimer <= 0 && p.magnetTimer > -1) {
+                 p.magnetTimer = -1;
                  onMagnetUpdate(0);
              }
         }
 
-        // Update Trails
         if ((!p.isGrounded || p.isSliding) && frameCountRef.current % 3 === 0) {
             trailsRef.current.push({
                 x: p.x, y: p.y, width: p.width, height: p.height, rotation: p.rotation,
@@ -834,31 +712,31 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         for (let i = trailsRef.current.length - 1; i >= 0; i--) {
             const t = trailsRef.current[i];
-            t.x -= gameSpeedRef.current;
-            t.opacity -= 0.04; 
+            t.x -= gameSpeedRef.current * deltaTime;
+            t.opacity -= 0.04 * deltaTime; 
             t.scaleX *= 0.95; t.scaleY *= 0.95; 
             if (t.opacity <= 0 || t.scaleX < 0.1) trailsRef.current.splice(i, 1);
         }
 
         // Speed & Distance
         gameSpeedRef.current = Math.min(MAX_SPEED, levelConfig.baseSpeed + distanceRef.current * 0.00005);
-        distanceRef.current += gameSpeedRef.current;
+        distanceRef.current += gameSpeedRef.current * deltaTime;
         scoreRef.current = Math.floor(distanceRef.current / 10) + bonusScoreRef.current;
         onScoreUpdate(scoreRef.current);
 
         // --- Background Updates ---
         hillsRef.current.forEach(h => {
-            h.x -= gameSpeedRef.current * 0.1;
+            h.x -= (gameSpeedRef.current * 0.1) * deltaTime;
             if (h.x + h.w < 0) { h.x = canvas.width + 100; h.h = 100 + Math.random() * 150; }
         });
         
         treesRef.current.forEach(t => {
-            t.x -= gameSpeedRef.current * 0.5;
+            t.x -= (gameSpeedRef.current * 0.5) * deltaTime;
             if (t.x + t.w < 0) { t.x = canvas.width + 50 + Math.random() * 100; t.h = 60 + Math.random() * 40; }
         });
 
-        if (Math.random() < 0.15) spawnGroundDecor(canvas.width + 50, groundY); 
-        groundDecorRef.current.forEach(d => { d.x -= gameSpeedRef.current; });
+        if (Math.random() < 0.15 * deltaTime) spawnGroundDecor(canvas.width + 50, groundY); 
+        groundDecorRef.current.forEach(d => { d.x -= gameSpeedRef.current * deltaTime; });
         groundDecorRef.current = groundDecorRef.current.filter(d => d.x > -50);
 
         // --- Obstacle Spawning ---
@@ -866,7 +744,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const currentMinGap = levelConfig.minGap + (gameSpeedRef.current * 10); 
         
         if (!lastObstacle || (canvas.width - lastObstacle.x > currentMinGap)) {
-          if (Math.random() < 0.6) {
+          if (Math.random() < 0.6 * deltaTime) { // Adjust spawn rate for delta time
             const typeVal = Math.random();
             let type = EntityType.OBSTACLE_GROUND;
             let subtype: Entity['subtype'] = 'MUSHROOM';
@@ -877,62 +755,43 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             let initialY = yPos;
             let floating = false;
 
-            if (Math.random() < 0.08) { // Higher item chance in Levels
+            if (Math.random() < 0.08) { 
                 type = EntityType.POWERUP;
                 subtype = Math.random() > 0.5 ? 'SHIELD' : 'MAGNET';
                 yPos = groundY - 100 - (Math.random() * 60);
                 initialY = yPos;
-                floating = false; // Powerups don't float anymore
+                floating = false; 
                 w = 40; h = 40;
                 color = subtype === 'SHIELD' ? THEME_COLORS.shield : THEME_COLORS.magnet;
             } else {
                 if (typeVal > 0.75) {
-                  // AIR OBSTACLE
                   type = EntityType.OBSTACLE_AIR;
                   yPos = groundY - 120;
                   initialY = yPos;
                   w = 50; h = 40;
                   color = THEME_COLORS.obstacleAir;
                   subtype = 'GHOST';
-                  
-                  // Level 3+ Adds BAT
                   if (levelConfig.id >= 3 && Math.random() > 0.5) {
                       subtype = 'BAT';
                       color = THEME_COLORS.bat;
                   }
-                  
                   if (levelConfig.hasMovingObstacles) floating = true;
                 } else if (typeVal > 0.35) {
-                   // GROUND OBSTACLE
                    type = EntityType.OBSTACLE_GROUND;
                    const rand = Math.random();
-                   
-                   // Determine available subtypes based on level
                    const subtypes: Entity['subtype'][] = ['MUSHROOM', 'SPIKE', 'PILLAR'];
                    if (levelConfig.id >= 2) subtypes.push('LOG');
                    if (levelConfig.id >= 4) subtypes.push('CRYSTAL');
                    if (levelConfig.id >= 5) subtypes.push('FIREBALL');
-                   
                    subtype = subtypes[Math.floor(rand * subtypes.length)];
 
-                   if (subtype === 'SPIKE') {
-                       w = 40; h = 30; yPos = groundY - h; color = THEME_COLORS.spike;
-                   } else if (subtype === 'PILLAR') {
-                       w = 40; h = 70; yPos = groundY - h; color = THEME_COLORS.pillar;
-                   } else if (subtype === 'LOG') {
-                       w = 50; h = 25; yPos = groundY - h; color = THEME_COLORS.log;
-                   } else if (subtype === 'CRYSTAL') {
-                       w = 30; h = 50; yPos = groundY - h; color = THEME_COLORS.crystal;
-                   } else if (subtype === 'FIREBALL') {
-                       w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.fireball;
-                       floating = true; // Fireball bounces
-                       initialY = yPos;
-                   } else {
-                       // Mushroom
-                       w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.mushroomCap;
-                   }
+                   if (subtype === 'SPIKE') { w = 40; h = 30; yPos = groundY - h; color = THEME_COLORS.spike; }
+                   else if (subtype === 'PILLAR') { w = 40; h = 70; yPos = groundY - h; color = THEME_COLORS.pillar; }
+                   else if (subtype === 'LOG') { w = 50; h = 25; yPos = groundY - h; color = THEME_COLORS.log; }
+                   else if (subtype === 'CRYSTAL') { w = 30; h = 50; yPos = groundY - h; color = THEME_COLORS.crystal; }
+                   else if (subtype === 'FIREBALL') { w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.fireball; floating = true; initialY = yPos; }
+                   else { w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.mushroomCap; }
                 } else {
-                   // COIN
                    type = EntityType.COIN;
                    subtype = 'STAR';
                    yPos = groundY - 120 - (Math.random() * 40);
@@ -951,34 +810,33 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // --- Update Entities ---
         cloudsRef.current.forEach(c => {
-          c.x -= c.s;
+          c.x -= c.s * deltaTime;
           if (c.x + c.w + 50 < 0) c.x = canvas.width + 50;
         });
 
         for (let i = obstaclesRef.current.length - 1; i >= 0; i--) {
           const obs = obstaclesRef.current[i];
           
-          // Moving obstacles logic
           if (obs.floating && obs.initialY !== undefined) {
-             // Different floating patterns
              if (obs.subtype === 'FIREBALL') {
-                 // Bounce for fireball
                  obs.y = obs.initialY - Math.abs(Math.sin(frameCountRef.current * 0.1)) * 60;
              } else {
-                 // Gentle sine for ghosts/bats
                  obs.y = obs.initialY + Math.sin(frameCountRef.current * 0.05) * 40;
              }
           }
 
-          // Magnet Logic
           if (p.magnetTimer > 0 && obs.type === EntityType.COIN) {
               const dx = p.x - obs.x;
               const dy = p.y - obs.y;
               const dist = Math.sqrt(dx*dx + dy*dy);
-              if (dist < 500) { obs.x += (dx / dist) * 15; obs.y += (dy / dist) * 15; }
-              else { obs.x -= gameSpeedRef.current; }
+              if (dist < 500) { 
+                  obs.x += (dx / dist) * 15 * deltaTime; 
+                  obs.y += (dy / dist) * 15 * deltaTime; 
+              } else { 
+                  obs.x -= gameSpeedRef.current * deltaTime; 
+              }
           } else {
-              obs.x -= gameSpeedRef.current;
+              obs.x -= gameSpeedRef.current * deltaTime;
           }
 
           const collisionMargin = (obs.subtype === 'SPIKE' || obs.subtype === 'CRYSTAL' || obs.type === EntityType.POWERUP) ? 0 : 10;
@@ -992,15 +850,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             if (obs.type === EntityType.COIN) {
                const scoreVal = activeTheme.id === 'classic' ? 200 : 100;
                bonusScoreRef.current += scoreVal; 
-               starsCollectedRef.current += 1; // Increment Star Count
+               starsCollectedRef.current += 1; 
                onStarUpdate(starsCollectedRef.current);
                
-               // WIN CONDITION
                if (starsCollectedRef.current >= levelConfig.targetStars) {
                    playSfx('levelComplete');
                    setGameState(GameState.LEVEL_COMPLETE);
                    onLevelComplete();
-                   return; // Stop processing frame
+                   return; 
                }
 
                createSparkles(obs.x + obs.width/2, obs.y + obs.height/2, 8, THEME_COLORS.coin);
@@ -1011,7 +868,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                    p.hasShield = true;
                    createSparkles(obs.x + obs.width/2, obs.y + obs.height/2, 10, THEME_COLORS.shield);
                } else if (obs.subtype === 'MAGNET') {
-                   p.magnetTimer = MAGNET_DURATION; // 20s
+                   p.magnetTimer = MAGNET_DURATION; 
                    createSparkles(obs.x + obs.width/2, obs.y + obs.height/2, 10, THEME_COLORS.magnet);
                }
                playSfx('powerup');
@@ -1040,10 +897,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         for (let i = particlesRef.current.length - 1; i >= 0; i--) {
           const pt = particlesRef.current[i];
-          pt.x += pt.vx;
-          pt.y += pt.vy;
-          pt.life -= 0.05;
-          pt.radius += pt.growth;
+          pt.x += pt.vx * deltaTime;
+          pt.y += pt.vy * deltaTime;
+          pt.life -= 0.05 * deltaTime;
+          pt.radius += pt.growth * deltaTime;
           if (pt.radius < 0) pt.radius = 0;
           if (pt.life <= 0) particlesRef.current.splice(i, 1);
         }
@@ -1057,7 +914,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // BACKGROUNDS (Draw code same as before...)
+    // BACKGROUNDS 
     ctx.fillStyle = '#e0f2fe'; 
     hillsRef.current.forEach(h => {
         ctx.beginPath();
@@ -1198,11 +1055,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             if (obs.subtype === 'BAT') {
                 ctx.fillStyle = THEME_COLORS.bat;
                 ctx.beginPath();
-                // Bat Body
                 ctx.ellipse(cx, cy, 12, 12, 0, 0, Math.PI*2);
                 ctx.fill();
                 ctx.stroke();
-                // Wings
                 const wingFlap = Math.sin(frameCountRef.current * 0.2) * 5;
                 ctx.beginPath();
                 ctx.moveTo(cx - 10, cy);
@@ -1214,14 +1069,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.quadraticCurveTo(cx + 25, cy - 10 + wingFlap, cx + 10, cy + 10);
                 ctx.fill();
                 ctx.stroke();
-                // Eyes
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
                 ctx.arc(cx - 4, cy - 2, 2.5, 0, Math.PI*2);
                 ctx.arc(cx + 4, cy - 2, 2.5, 0, Math.PI*2);
                 ctx.fill();
             } else {
-                // Ghost (default)
                 ctx.fillStyle = '#f1f5f9';
                 ctx.beginPath();
                 ctx.arc(cx, cy - 5, obs.width/2, Math.PI, 0);
@@ -1261,7 +1114,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
              } else if (obs.subtype === 'CRYSTAL') {
                 ctx.fillStyle = THEME_COLORS.crystal;
                 ctx.beginPath();
-                // Low poly crystal shape
                 ctx.moveTo(cx, obs.y);
                 ctx.lineTo(obs.x + obs.width, cy);
                 ctx.lineTo(cx, obs.y + obs.height);
@@ -1269,7 +1121,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
-                // Shine
                 ctx.fillStyle = 'rgba(255,255,255,0.4)';
                 ctx.beginPath();
                 ctx.moveTo(cx, obs.y + 5);
@@ -1283,7 +1134,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                  ctx.arc(cx, cy, obs.height/2, 0, Math.PI*2);
                  ctx.fill();
                  ctx.stroke();
-                 // Wood Rings (Rotate)
                  const rot = distanceRef.current * 0.1;
                  ctx.save();
                  ctx.translate(cx, cy);
@@ -1304,7 +1154,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                  ctx.beginPath();
                  ctx.arc(cx, cy, obs.width/3, 0, Math.PI*2);
                  ctx.fill();
-                 // Tail
                  ctx.fillStyle = THEME_COLORS.fireball;
                  ctx.beginPath();
                  ctx.moveTo(cx + obs.width/2, cy);
@@ -1376,15 +1225,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         });
     }
-
-    particlesRef.current.forEach(pt => {
-      ctx.globalAlpha = pt.life;
-      ctx.fillStyle = pt.color;
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-    });
 
     requestRef.current = requestAnimationFrame(tick);
   }, [gameState, setGameState, onGameOver, onScoreUpdate, onStarUpdate, onMagnetUpdate, onLevelComplete, activeTheme, levelConfig, playSfx]);

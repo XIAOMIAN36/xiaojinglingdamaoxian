@@ -1,15 +1,15 @@
 
 import { CharacterTheme, LevelConfig } from "./types";
 
-export const GRAVITY = 0.23; // Reduced from 0.32 for longer, floatier jumps
-export const JUMP_FORCE = -9.8; // Adjusted for new gravity
-export const DOUBLE_JUMP_FORCE = -8.5; 
+export const GRAVITY = 0.6; // Significantly increased for snappier jumping
+export const JUMP_FORCE = -15; // Increased to match new gravity
+export const DOUBLE_JUMP_FORCE = -12; 
 export const GROUND_Y = 400; 
-export const GAME_SPEED_START = 2.4; 
-export const MAX_SPEED = 6.5; 
+export const GAME_SPEED_START = 5.0; // Much faster start
+export const MAX_SPEED = 12.0; 
 export const MIN_OBSTACLE_GAP = 350; 
 
-export const MAGNET_DURATION = 1200; // 20 seconds at 60fps
+export const MAGNET_DURATION = 1000; 
 
 export const PLAYER_WIDTH = 44; 
 export const PLAYER_HEIGHT_STANDING = 44; 
@@ -28,40 +28,40 @@ export const LEVELS: LevelConfig[] = [
   {
     id: 1,
     targetStars: 30,
-    baseSpeed: 2.4,
-    minGap: 400, // Easier gaps
+    baseSpeed: 5.0,
+    minGap: 450, 
     hasMovingObstacles: false,
     description: "初出茅庐"
   },
   {
     id: 2,
     targetStars: 45,
-    baseSpeed: 2.8,
-    minGap: 380,
+    baseSpeed: 6.0,
+    minGap: 420,
     hasMovingObstacles: false,
     description: "丛林探险"
   },
   {
     id: 3,
     targetStars: 60,
-    baseSpeed: 3.2,
-    minGap: 360,
-    hasMovingObstacles: true, // Moving ghosts start here
+    baseSpeed: 7.0,
+    minGap: 400,
+    hasMovingObstacles: true, 
     description: "幽灵出没"
   },
   {
     id: 4,
     targetStars: 80,
-    baseSpeed: 3.6,
-    minGap: 340,
+    baseSpeed: 8.0,
+    minGap: 380,
     hasMovingObstacles: true,
     description: "极速挑战"
   },
   {
     id: 5,
     targetStars: 100,
-    baseSpeed: 4.0,
-    minGap: 320,
+    baseSpeed: 9.0,
+    minGap: 360,
     hasMovingObstacles: true,
     description: "大师试炼"
   }

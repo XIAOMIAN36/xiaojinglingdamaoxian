@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>小精灵大冒险</title>
+    
+    <!-- Open Graph / Wechat Share Meta Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="小精灵大冒险 - 谁能跑得更远？" />
+    <meta property="og:description" content="快来挑战我的最高分！超可爱的小精灵跑酷游戏，点击即玩！" />
+    <meta property="og:image" content="https://cdn.pixabay.com/photo/2022/10/05/20/43/hyacinth-macaw-7501470_1280.jpg" />
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #f0f9ff; /* Sky 50 */
+        touch-action: none; /* Prevent zoom/scroll on mobile */
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      canvas {
+        display: block;
+      }
+      /* Animation for share arrow */
+      @keyframes float-arrow {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(10px, -10px); }
+      }
+      .animate-float-arrow {
+        animation: float-arrow 1.5s ease-in-out infinite;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

@@ -41,6 +41,7 @@ export interface Player extends Entity {
   hasShield: boolean;
   magnetTimer: number;
   landTimer: number; // For landing squash animation
+  invincibleTimer: number; // For revive invulnerability
 }
 
 export interface Particle {
@@ -85,6 +86,7 @@ export interface PlayerStats {
   unlockedCharacters: CharacterId[];
   selectedCharacter: CharacterId;
   maxLevelReached: number; // 1 to 5
+  revivePotions: number;
 }
 
 export interface LevelConfig {

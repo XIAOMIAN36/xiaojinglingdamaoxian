@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GameCanvas from './components/GameCanvas';
 import UIOverlay from './components/UIOverlay';
 import { GameState, DailyMission, PlayerStats, CharacterId, LevelConfig } from './types';
 import { generateDailyMission } from './services/geminiService';
-import { CHARACTER_THEMES, BGM_URL, LEVELS } from './constants';
+import { CHARACTER_THEMES, BGM_URL, LEVELS, SHOP_ITEMS } from './constants';
 
 const createSynthesizer = () => {
   const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -169,7 +170,8 @@ const App: React.FC = () => {
           const loaded = JSON.parse(saved);
           return {
               ...loaded,
-              maxLevelReached: loaded.maxLevelReached || 1 // Backward compatibility
+              maxLevelReached: loaded.maxLevelReached || 1, // Backward compatibility
+              revivePotions: loaded.revivePotions || 0
           };
       }
       return {
@@ -178,7 +180,8 @@ const App: React.FC = () => {
           highScore: 0,
           unlockedCharacters: ['classic'],
           selectedCharacter: 'classic',
-          maxLevelReached: 1
+          maxLevelReached: 1,
+          revivePotions: 0
       };
   });
 
@@ -327,6 +330,26 @@ const App: React.FC = () => {
           setStats(prev => ({ ...prev, selectedCharacter: id }));
       }
   };
+  
+  const handleBuyShopItem = (itemId: string) => {
+      if (itemId === SHOP_ITEMS.revivePotion.id) {
+          if (stats.totalCoins >= SHOP_ITEMS.revivePotion.price) {
+              setStats(prev => ({
+                  ...prev,
+                  totalCoins: prev.totalCoins - SHOP_ITEMS.revivePotion.price,
+                  revivePotions: (prev.revivePotions || 0) + 1
+              }));
+              playSfx('powerup');
+          }
+      }
+  };
+  
+  const handleConsumeRevive = () => {
+      setStats(prev => ({
+          ...prev,
+          revivePotions: Math.max(0, (prev.revivePotions || 0) - 1)
+      }));
+  };
 
   // Get current level config
   const currentLevelConfig = LEVELS.find(l => l.id === currentLevel) || LEVELS[0];
@@ -344,6 +367,8 @@ const App: React.FC = () => {
         activeTheme={CHARACTER_THEMES[stats.selectedCharacter]}
         playSfx={playSfx}
         levelConfig={currentLevelConfig}
+        revivePotions={stats.revivePotions}
+        onConsumeRevive={handleConsumeRevive}
       />
       <UIOverlay 
         gameState={gameState}
@@ -364,6 +389,7 @@ const App: React.FC = () => {
         toggleAudio={toggleAudio}
         currentLevelConfig={currentLevelConfig}
         magnetProgress={magnetProgress}
+        onBuyShopItem={handleBuyShopItem}
       />
     </div>
   );

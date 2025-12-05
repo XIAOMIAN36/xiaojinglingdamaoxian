@@ -24,6 +24,15 @@ export const BGM_URL = "https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d
 // Share Image for social cards
 export const SHARE_IMAGE_URL = "https://cdn.pixabay.com/photo/2022/10/05/20/43/hyacinth-macaw-7501470_1280.jpg";
 
+export const SHOP_ITEMS = {
+    revivePotion: {
+        id: 'revivePotion',
+        name: '复活药水',
+        price: 200,
+        description: '抵挡一次致命伤害并自动复活'
+    }
+};
+
 export const LEVELS: LevelConfig[] = [
   {
     id: 1,

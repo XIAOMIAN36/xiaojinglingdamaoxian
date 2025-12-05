@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { GameState, DailyMission, CharacterTheme, CharacterId, PlayerStats, LevelConfig } from '../types';
-import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight } from 'lucide-react';
-import { CHARACTER_THEMES, LEVELS } from '../constants';
+import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight, ShoppingCart, Heart } from 'lucide-react';
+import { CHARACTER_THEMES, LEVELS, SHOP_ITEMS } from '../constants';
 
 interface UIOverlayProps {
   gameState: GameState;
@@ -23,6 +23,7 @@ interface UIOverlayProps {
   toggleAudio: () => void;
   currentLevelConfig: LevelConfig;
   magnetProgress: number;
+  onBuyShopItem: (itemId: string) => void;
 }
 
 const CharacterAvatar = ({ theme }: { theme: CharacterTheme }) => (
@@ -73,9 +74,11 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   isMuted,
   toggleAudio,
   currentLevelConfig,
-  magnetProgress
+  magnetProgress,
+  onBuyShopItem
 }) => {
   const [showCharSelect, setShowCharSelect] = useState(false);
+  const [showShop, setShowShop] = useState(false);
   const [showShareHint, setShowShareHint] = useState(false);
 
   const handleShareClick = () => {
@@ -98,6 +101,11 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                     <Trophy className="text-blue-400" size={18} />
                     <span className="font-bold text-sm sm:text-base">{stats.highScore}</span>
                 </div>
+                {/* Revive Potion Count in Menu */}
+                 <div className="bg-white/90 backdrop-blur text-slate-700 px-3 py-2 sm:px-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-2">
+                    <Heart className="text-pink-500 fill-pink-500" size={18} />
+                    <span className="font-bold text-sm sm:text-base">{stats.revivePotions || 0}</span>
+                </div>
                 <button onClick={toggleAudio} className="bg-white/90 p-2 rounded-xl border border-blue-100 shadow-sm hover:bg-blue-50 transition-transform active:scale-95">
                     {isMuted ? <Music2 className="text-slate-400" size={20} /> : <Music className="text-blue-500" size={20} />}
                 </button>
@@ -116,6 +124,14 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                         <span className="text-lg font-bold text-slate-500">{currentLevelConfig.targetStars}</span>
                     </div>
                  </div>
+                 
+                 {/* Revive Status */}
+                 {stats.revivePotions > 0 && (
+                     <div className="bg-pink-50/80 backdrop-blur-md px-3 py-1 rounded-full border border-pink-200 shadow-sm flex items-center gap-2 mb-2">
+                        <Heart size={16} className="text-pink-500 fill-pink-500" />
+                        <span className="text-sm font-bold text-pink-700">x{stats.revivePotions}</span>
+                     </div>
+                 )}
 
                  {/* Magnet Timer */}
                  {magnetProgress > 0 && (
@@ -160,7 +176,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
       )}
 
       {/* Main Menu */}
-      {gameState === GameState.MENU && !showCharSelect && (
+      {gameState === GameState.MENU && !showCharSelect && !showShop && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
           <div className="max-w-md w-full bg-white/90 border border-blue-100 p-8 rounded-3xl shadow-xl text-center relative overflow-hidden ring-4 ring-blue-50 backdrop-blur-md mx-4 max-h-[90vh] overflow-y-auto">
             
@@ -201,20 +217,28 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 
             <div className="flex gap-4">
                 <button
+                onClick={() => setShowShop(true)}
+                className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold py-4 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
+                >
+                <ShoppingCart size={24} />
+                <span className="text-xs uppercase tracking-wide">商店</span>
+                </button>
+                
+                <button
                 onClick={() => setShowCharSelect(true)}
                 className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
                 >
                 <span className="text-2xl">🐷</span>
                 <span className="text-xs uppercase tracking-wide">角色</span>
                 </button>
-                {/* Default Start Button (Starts max level) */}
-                <button
-                onClick={() => onStart(stats.maxLevelReached)}
-                className="flex-[2] bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-black py-4 rounded-2xl text-xl shadow-lg shadow-blue-200 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
-                >
-                <Play fill="white" size={24} /> 继续冒险
-                </button>
             </div>
+            
+            <button
+            onClick={() => onStart(stats.maxLevelReached)}
+            className="w-full mt-4 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-black py-4 rounded-2xl text-xl shadow-lg shadow-blue-200 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+            >
+            <Play fill="white" size={24} /> 继续冒险
+            </button>
             
              <button
                onClick={handleShareClick}
@@ -225,6 +249,43 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
             
           </div>
         </div>
+      )}
+
+      {/* Shop Modal */}
+      {gameState === GameState.MENU && showShop && (
+          <div className="fixed inset-0 z-50 bg-slate-50 overflow-hidden flex flex-col pointer-events-auto">
+              <div className="flex items-center p-4 bg-white shadow-sm z-10 sticky top-0">
+                  <button onClick={() => setShowShop(false)} className="bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition-colors mr-4">
+                      <ArrowLeft size={24} className="text-slate-700" />
+                  </button>
+                  <h2 className="text-xl font-black text-slate-800">道具商店</h2>
+                  <div className="ml-auto flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">
+                      <Star size={14} fill="currentColor" /> {stats.totalCoins}
+                  </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center">
+                  <div className="bg-white rounded-3xl p-6 border-2 border-slate-100 shadow-sm w-full max-w-md flex items-center gap-4">
+                      <div className="w-16 h-16 bg-pink-100 rounded-2xl flex items-center justify-center">
+                          <Heart size={32} className="text-pink-500 fill-pink-500" />
+                      </div>
+                      <div className="flex-1">
+                          <h3 className="font-bold text-lg text-slate-800">{SHOP_ITEMS.revivePotion.name}</h3>
+                          <p className="text-sm text-slate-500">{SHOP_ITEMS.revivePotion.description}</p>
+                          <p className="text-xs text-blue-500 font-bold mt-1">当前拥有: {stats.revivePotions || 0}</p>
+                      </div>
+                      <button 
+                        onClick={() => onBuyShopItem(SHOP_ITEMS.revivePotion.id)}
+                        disabled={stats.totalCoins < SHOP_ITEMS.revivePotion.price}
+                        className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-1 transition-colors
+                            ${stats.totalCoins >= SHOP_ITEMS.revivePotion.price 
+                                ? 'bg-yellow-400 hover:bg-yellow-500 text-yellow-900 shadow-sm' 
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                      >
+                          <Star size={14} fill="currentColor" /> {SHOP_ITEMS.revivePotion.price}
+                      </button>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* Character Selector Modal */}

@@ -17,6 +17,8 @@ interface GameCanvasProps {
   activeTheme: CharacterTheme;
   levelConfig: LevelConfig;
   playSfx: (type: 'jump' | 'doubleJump' | 'slide' | 'coin' | 'powerup' | 'hit' | 'gameOver' | 'gameStart' | 'missionComplete' | 'levelComplete') => void;
+  revivePotions: number;
+  onConsumeRevive: () => void;
 }
 
 // Extended particle for dust effects
@@ -56,7 +58,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   onLevelComplete,
   activeTheme, 
   levelConfig,
-  playSfx 
+  playSfx,
+  revivePotions,
+  onConsumeRevive
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
@@ -89,7 +93,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     rotation: 0,
     hasShield: false,
     magnetTimer: 0,
-    landTimer: 0
+    landTimer: 0,
+    invincibleTimer: 0
   });
 
   const obstaclesRef = useRef<Entity[]>([]);
@@ -139,7 +144,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       rotation: 0,
       hasShield: startWithShield,
       magnetTimer: 0,
-      landTimer: 0
+      landTimer: 0,
+      invincibleTimer: 0
     };
     
     obstaclesRef.current = [];
@@ -416,6 +422,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const shadowScale = 1 - Math.min((groundY - (p.y + p.height)) / 200, 0.6);
     const cx = p.x + p.width / 2;
     
+    // Draw Invincible Flash
+    if (p.invincibleTimer > 0) {
+        if (Math.floor(p.invincibleTimer / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+    }
+
     if (p.y + p.height < groundY + 50) { 
         ctx.fillStyle = THEME_COLORS.shadow;
         ctx.beginPath();
@@ -598,6 +611,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.restore();
 
     ctx.restore(); 
+    ctx.globalAlpha = 1.0; // Reset alpha
   };
 
   const tick = useCallback((time: number) => {
@@ -645,6 +659,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const p = playerRef.current;
         const groundY = canvas.height - 100;
         
+        // Invincible Timer
+        if (p.invincibleTimer > 0) {
+            p.invincibleTimer -= deltaTime;
+        }
+
         coinRotationRef.current += 0.05 * deltaTime;
         const wasGrounded = p.isGrounded;
 
@@ -769,11 +788,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 color = subtype === 'SHIELD' ? THEME_COLORS.shield : THEME_COLORS.magnet;
             } else {
                 // SPECIAL OBSTACLE CHECK (Level 3+)
-                const projectileChance = levelConfig.id >= 3 ? 0.2 : 0;
-                const phasingChance = levelConfig.id >= 4 ? 0.15 : 0;
-                const airObstacleChance = 0.25;
+                const projectileChance = levelConfig.id >= 3 ? 0.15 : 0; // Reduced to 0.15
+                const phasingChance = levelConfig.id >= 4 ? 0.12 : 0; // Reduced to 0.12
+                const airObstacleChance = 0.3; // Increased to 0.3
 
-                if (Math.random() < projectileChance) {
+                // PREVENT CONSECUTIVE PROJECTILES
+                const lastWasProjectile = lastObstacle && lastObstacle.subtype === 'PROJECTILE';
+
+                if (Math.random() < projectileChance && !lastWasProjectile) {
                     type = EntityType.OBSTACLE_AIR;
                     subtype = 'PROJECTILE';
                     w = 40; h = 20;
@@ -787,13 +809,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     color = THEME_COLORS.phasingVisible;
                 } else if (typeVal > (1 - airObstacleChance)) {
                   // AIR ENTITY SPAWN (Obstacles OR Stars for Double Jump)
-                  // Standard Air Position or High Jump Position
-                  const isHighJump = Math.random() > 0.4; // 60% chance for high jump height
-                  yPos = isHighJump ? groundY - 190 : groundY - 120; // 190 is approx double jump height
+                  const isHighJump = Math.random() > 0.4;
+                  yPos = isHighJump ? groundY - 190 : groundY - 120;
                   
-                  // Decide if it's a Trap or a Reward (Star) at this height
-                  // If it's high up, 40% chance it's a star, 60% obstacle
-                  const isStarReward = Math.random() < 0.4;
+                  // Star Reward Chance Increased from 40% to 60%
+                  const isStarReward = Math.random() < 0.6;
 
                   if (isStarReward) {
                      type = EntityType.COIN;
@@ -814,7 +834,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                   initialY = yPos;
                   if (levelConfig.hasMovingObstacles && type !== EntityType.COIN) floating = true;
-                } else if (typeVal > 0.2) {
+                } else if (typeVal > 0.35) { // Threshold increased from 0.2 to 0.35 (More Ground Stars)
                    type = EntityType.OBSTACLE_GROUND;
                    const rand = Math.random();
                    const subtypes: Entity['subtype'][] = ['MUSHROOM', 'SPIKE', 'PILLAR'];
@@ -830,11 +850,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                    else if (subtype === 'FIREBALL') { w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.fireball; floating = true; initialY = yPos; }
                    else { w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.mushroomCap; }
                 } else {
+                   // Ground Star
                    type = EntityType.COIN;
                    subtype = 'STAR';
                    yPos = groundY - 120 - (Math.random() * 40);
                    initialY = yPos;
-                   w = 55; h = 55; // Increased size from 30 to 55 for better visibility/hitbox
+                   w = 55; h = 55;
                    color = THEME_COLORS.coin;
                 }
             }
@@ -875,7 +896,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           if (obs.subtype === 'PROJECTILE') {
               // Projectiles fly faster than game speed from right to left
-              obs.x -= (gameSpeedRef.current * 1.5) * deltaTime;
+              // REDUCED SPEED: from 1.5x to 1.15x
+              obs.x -= (gameSpeedRef.current * 1.15) * deltaTime;
           } else if (p.magnetTimer > 0 && obs.type === EntityType.COIN) {
               const dx = p.x - obs.x;
               const dy = p.y - obs.y;
@@ -926,12 +948,32 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                playSfx('powerup');
                obs.markedForDeletion = true;
             } else {
-               if (p.hasShield) {
+               // HIT OBSTACLE
+               
+               // 1. Invincibility Check (After Revive)
+               if (p.invincibleTimer > 0) {
+                   // Do nothing, phase through
+               } 
+               // 2. Shield Check
+               else if (p.hasShield) {
                    p.hasShield = false;
                    obs.markedForDeletion = true;
                    createSparkles(obs.x + obs.width/2, obs.y + obs.height/2, 15, '#ffffff');
                    playSfx('hit');
-               } else {
+               } 
+               // 3. Revive Potion Check
+               else if (revivePotions > 0) {
+                   onConsumeRevive();
+                   p.invincibleTimer = 60; // ~1 second invincibility
+                   createSparkles(p.x + p.width/2, p.y + p.height/2, 20, '#ff00ff');
+                   // Clear nearby obstacles to prevent instant death again
+                   obstaclesRef.current.forEach(o => {
+                       if (Math.abs(o.x - p.x) < 300) o.markedForDeletion = true;
+                   });
+                   playSfx('powerup'); // Sound for revive
+               }
+               // 4. Game Over
+               else {
                   playSfx('hit');
                   playSfx('gameOver');
                   setGameState(GameState.GAME_OVER);
@@ -1319,7 +1361,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     requestRef.current = requestAnimationFrame(tick);
-  }, [gameState, setGameState, onGameOver, onScoreUpdate, onStarUpdate, onMagnetUpdate, onLevelComplete, activeTheme, levelConfig, playSfx]);
+  }, [gameState, setGameState, onGameOver, onScoreUpdate, onStarUpdate, onMagnetUpdate, onLevelComplete, activeTheme, levelConfig, playSfx, revivePotions, onConsumeRevive]);
 
   useEffect(() => {
     const handleResize = () => {

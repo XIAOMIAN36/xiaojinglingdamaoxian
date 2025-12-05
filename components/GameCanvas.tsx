@@ -268,7 +268,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         createDustParticles(p.x + p.width / 2, p.y + p.height, 5); // Slide Dust
         playSfx('slide');
       } else if (!p.isGrounded) {
-        p.vy = 15; // Fast drop
+        p.vy = 35; // Very fast drop (increased from 15 to match 0.9 gravity)
       }
     }
   }, [gameState, activeTheme, playSfx]);

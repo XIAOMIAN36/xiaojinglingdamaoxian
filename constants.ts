@@ -1,12 +1,12 @@
 
 import { CharacterTheme, LevelConfig } from "./types";
 
-export const GRAVITY = 0.6; // Significantly increased for snappier jumping
-export const JUMP_FORCE = -15; // Increased to match new gravity
-export const DOUBLE_JUMP_FORCE = -12; 
+export const GRAVITY = 0.9; // Significantly increased for heavy, fast falling
+export const JUMP_FORCE = -19; // Stronger jump to counteract high gravity
+export const DOUBLE_JUMP_FORCE = -15; 
 export const GROUND_Y = 400; 
-export const GAME_SPEED_START = 5.0; // Much faster start
-export const MAX_SPEED = 12.0; 
+export const GAME_SPEED_START = 5.0; 
+export const MAX_SPEED = 15.0; // Higher cap for later levels
 export const MIN_OBSTACLE_GAP = 350; 
 
 export const MAGNET_DURATION = 1000; 
@@ -18,7 +18,7 @@ export const PLAYER_HEIGHT_SLIDING = 30;
 export const OBSTACLE_WIDTH = 35; 
 export const OBSTACLE_HEIGHT = 35;
 
-// Background Music
+// Background Music (Lazy loaded in App.tsx)
 export const BGM_URL = "https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3"; 
 
 // Share Image for social cards
@@ -27,7 +27,7 @@ export const SHARE_IMAGE_URL = "https://cdn.pixabay.com/photo/2022/10/05/20/43/h
 export const LEVELS: LevelConfig[] = [
   {
     id: 1,
-    targetStars: 30,
+    targetStars: 10, // Much easier start
     baseSpeed: 5.0,
     minGap: 450, 
     hasMovingObstacles: false,
@@ -35,33 +35,33 @@ export const LEVELS: LevelConfig[] = [
   },
   {
     id: 2,
-    targetStars: 45,
-    baseSpeed: 6.0,
-    minGap: 420,
+    targetStars: 25,
+    baseSpeed: 6.5, // Faster
+    minGap: 400, // More obstacles
     hasMovingObstacles: false,
     description: "丛林探险"
   },
   {
     id: 3,
-    targetStars: 60,
-    baseSpeed: 7.0,
-    minGap: 400,
+    targetStars: 45,
+    baseSpeed: 8.0, // Fast
+    minGap: 360,
     hasMovingObstacles: true, 
     description: "幽灵出没"
   },
   {
     id: 4,
-    targetStars: 80,
-    baseSpeed: 8.0,
-    minGap: 380,
+    targetStars: 70,
+    baseSpeed: 9.5, // Very Fast
+    minGap: 330,
     hasMovingObstacles: true,
     description: "极速挑战"
   },
   {
     id: 5,
     targetStars: 100,
-    baseSpeed: 9.0,
-    minGap: 360,
+    baseSpeed: 11.0, // Extreme
+    minGap: 300, // Intense density
     hasMovingObstacles: true,
     description: "大师试炼"
   }

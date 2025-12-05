@@ -247,20 +247,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (gameState !== GameState.PLAYING) return;
 
     const p = playerRef.current;
-    // Character Ability: Ninja has triple jump (3), others have double jump (2)
     const maxJumps = activeTheme.id === 'ninja' ? 3 : 2;
 
     if (action === 'JUMP') {
       if (p.isGrounded) {
-        // First Jump
         p.vy = JUMP_FORCE;
         p.isGrounded = false;
         p.jumpCount = 1;
         p.isSliding = false;
-        createDustParticles(p.x + p.width / 2, p.y + p.height, 8); // Jump Dust
+        createDustParticles(p.x + p.width / 2, p.y + p.height, 8);
         playSfx('jump');
       } else if (p.jumpCount < maxJumps) {
-        // Double/Triple Jump
         p.vy = DOUBLE_JUMP_FORCE;
         p.jumpCount++;
         p.isSliding = false;
@@ -271,12 +268,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       if (p.isGrounded && !p.isSliding) {
         p.isSliding = true;
         p.slideTimer = 45; 
-        createDustParticles(p.x + p.width / 2, p.y + p.height, 5); // Slide Dust
+        createDustParticles(p.x + p.width / 2, p.y + p.height, 5); 
         playSfx('slide');
       } else if (!p.isGrounded) {
-        // FAST FALL
-        p.vy = 50; // Extremely fast manual drop
-        playSfx('slide'); // Audio feedback for fast fall
+        p.vy = 50; // Fast fall
+        playSfx('slide'); 
       }
     }
   }, [gameState, activeTheme, playSfx]);
@@ -293,10 +289,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
     
-    // --- Mobile Touch Logic (Tap to Jump, Swipe Down to Slide) ---
     const handleTouchStart = (e: TouchEvent) => {
         if (gameState === GameState.PAUSED) return;
-        
         touchStartRef.current = {
             x: e.touches[0].clientX,
             y: e.touches[0].clientY
@@ -305,43 +299,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     const handleTouchEnd = (e: TouchEvent) => {
         if (gameState === GameState.PAUSED || !touchStartRef.current) return;
-        
         const startX = touchStartRef.current.x;
         const startY = touchStartRef.current.y;
         const endX = e.changedTouches[0].clientX;
         const endY = e.changedTouches[0].clientY;
-        
         const diffX = endX - startX;
         const diffY = endY - startY;
         const dist = Math.sqrt(diffX*diffX + diffY*diffY);
-        
-        // Reset touch start
         touchStartRef.current = null;
-        
-        // Swipe Threshold (Increased to 40px to prevent accidental slides)
         const SWIPE_THRESHOLD = 40;
         
-        // Explicitly check for TAP (very small movement)
         if (dist < 10) {
             handleInput('JUMP');
             return;
         }
         
-        // Check for vertical swipe (more Y movement than X movement)
         if (Math.abs(diffY) > SWIPE_THRESHOLD && Math.abs(diffY) > Math.abs(diffX)) {
-            if (diffY > 0) {
-                // Swipe DOWN -> SLIDE
-                handleInput('SLIDE');
-            } else {
-                // Swipe UP -> JUMP
-                handleInput('JUMP');
-            }
+            if (diffY > 0) handleInput('SLIDE');
+            else handleInput('JUMP');
         } else {
-            // If it wasn't a distinct vertical swipe, treat as Tap/Jump
-            // But only if it wasn't a huge horizontal swipe (which might be accidental)
-            if (Math.abs(diffX) < SWIPE_THRESHOLD) {
-                handleInput('JUMP');
-            }
+            if (Math.abs(diffX) < SWIPE_THRESHOLD) handleInput('JUMP');
         }
     };
 
@@ -355,7 +332,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, [handleInput, gameState]);
 
-  // Drawing Helper Functions...
   const drawStar = (ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) => {
       let rot = Math.PI / 2 * 3;
       let x = cx;
@@ -369,7 +345,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           y = cy + Math.sin(rot) * outerRadius;
           ctx.lineTo(x, y);
           rot += step;
-
           x = cx + Math.cos(rot) * innerRadius;
           y = cy + Math.sin(rot) * innerRadius;
           ctx.lineTo(x, y);
@@ -389,28 +364,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   };
 
   const drawHat = (ctx: CanvasRenderingContext2D, hatColor: string, bandColor: string, lag: number) => {
-      // Hat Base
       ctx.fillStyle = hatColor;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 22, 6, 0, 0, Math.PI*2); // Brim
+      ctx.ellipse(0, 0, 22, 6, 0, 0, Math.PI*2);
       ctx.fill();
-      
-      // Hat Cone with physics lag
       ctx.beginPath();
       ctx.moveTo(-16, 0);
       ctx.lineTo(16, 0);
-      // The tip lags behind based on movement
       ctx.quadraticCurveTo(0 - lag * 2, -20, 0 - lag * 4, -35); 
       ctx.quadraticCurveTo(-5 - lag, -15, -16, 0);
       ctx.fill();
-
-      // Band
       ctx.fillStyle = bandColor;
       ctx.beginPath();
       ctx.rect(-14, -6, 28, 4);
       ctx.fill();
-      
-      // Buckle/Decoration
       ctx.fillStyle = '#fff';
       ctx.beginPath();
       ctx.arc(0, -4, 3, 0, Math.PI*2);
@@ -426,33 +393,25 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.transform(1, 0, trail.skewX, 1, 0, 0);
           ctx.scale(trail.scaleX, trail.scaleY);
           ctx.fillStyle = trail.color;
-          
-          // Simplified Ghost Shape for Trail
           ctx.beginPath();
-          ctx.ellipse(0, 5, 18, 14, 0, 0, Math.PI*2); // Body
+          ctx.ellipse(0, 5, 18, 14, 0, 0, Math.PI*2);
           ctx.fill();
           ctx.beginPath();
-          ctx.ellipse(0, -10, 16, 14, 0, 0, Math.PI*2); // Head
+          ctx.ellipse(0, -10, 16, 14, 0, 0, Math.PI*2);
           ctx.fill();
-          
           ctx.restore();
       });
       ctx.globalAlpha = 1.0;
   };
 
+  // --- REFACTORED CHARACTER DRAWING FOR SMOOTHER ANIMATION ---
   const drawCharacter = (ctx: CanvasRenderingContext2D, p: Player, distance: number, theme: CharacterTheme) => {
     const colors = theme.colors;
     const groundY = ctx.canvas.height - 100;
     const shadowScale = 1 - Math.min((groundY - (p.y + p.height)) / 200, 0.6);
     const cx = p.x + p.width / 2;
     
-    // Draw Invincible Flash
-    if (p.invincibleTimer > 0) {
-        if (Math.floor(p.invincibleTimer / 4) % 2 === 0) {
-            ctx.globalAlpha = 0.5;
-        }
-    }
-
+    // Shadow
     if (p.y + p.height < groundY + 50) { 
         ctx.fillStyle = THEME_COLORS.shadow;
         ctx.beginPath();
@@ -479,10 +438,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
     }
     
-    // Rotation mainly for tumbling jump
+    // Air Rotation
     if (!p.isGrounded) ctx.rotate(p.rotation); 
 
-    // Squash & Stretch Logic
+    // Squash & Stretch & Bounce
     let scaleX = 1;
     let scaleY = 1;
     let translateY = 0;
@@ -493,57 +452,64 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const squash = Math.sin(t * Math.PI) * 0.5;
         scaleX = 1 + squash * 0.4;
         scaleY = 1 - squash * 0.4;
-        skewX = -0.3 * Math.sin(t * Math.PI); 
         translateY = (p.height / 2) * (1 - scaleY);
     } else if (!p.isGrounded) {
-        scaleX = 0.9; scaleY = 1.1; 
+        scaleX = 0.95; scaleY = 1.05; 
+        skewX = 0.1; // Lean into jump
     } else {
-        const bounce = Math.sin(distance * 0.3) * 0.05;
+        // Subtle running bounce
+        const bounce = Math.abs(Math.sin(distance * 0.3)) * 0.05;
         scaleX = 1 + bounce; scaleY = 1 - bounce;
         translateY = (p.height / 2) * (1 - scaleY);
-        skewX = -0.1; // Forward lean running
+        skewX = -0.15; // Forward lean running
     }
     
     if (p.isSliding) {
         scaleY = 0.6; scaleX = 1.3;
         translateY = (p.height / 2) * (1 - scaleY);
-        skewX = -0.4;
+        skewX = -0.5;
     }
 
     ctx.translate(0, translateY);
     ctx.transform(1, 0, skewX, 1, 0, 0);
     ctx.scale(scaleX, scaleY);
 
-    const runCycle = (distance * 0.4); 
     const isRunning = p.isGrounded && !p.isSliding && p.landTimer <= 0;
-    
-    // --- DRAW CAT ---
+    const runCycle = (distance * 0.3); // Slower, more natural cycle
+    const limbSwing = 0.6; // Max rotation in radians (about 35 degrees)
 
-    // 1. Back Leg
+    // --- DRAW LAYERS (Back to Front) ---
+
+    // 1. Back Arm (Left Arm - Swings opposite to Left Leg/Back Leg)
     ctx.save();
-    ctx.translate(-5, 10);
-    const legAngle = isRunning ? Math.sin(runCycle) * 0.8 : (p.isSliding ? 1.2 : -0.2);
-    ctx.rotate(legAngle);
-    drawLimb(ctx, 10, 16, colors.dark);
+    ctx.translate(2, -2); // Shoulder pivot
+    // If Back Leg (Left) is forward (sin > 0), Back Arm (Left) should be back (sin < 0)? 
+    // Wait, usually contralateral: Left Leg forward = Right Arm forward.
+    // So Left Arm should be in phase with Right Leg.
+    // Right Leg = sin(cycle + PI). So Left Arm = sin(cycle + PI).
+    const backArmAngle = isRunning ? Math.sin(runCycle + Math.PI) * limbSwing : (p.isSliding ? 1.5 : -0.5);
+    ctx.rotate(backArmAngle);
+    drawLimb(ctx, 9, 14, colors.dark); // Slightly darker for depth
     ctx.restore();
 
-    // 2. Back Arm
+    // 2. Back Leg (Left Leg)
     ctx.save();
-    ctx.translate(8, 5);
-    const armAngle = isRunning ? Math.sin(runCycle + Math.PI) * 0.8 : (p.isSliding ? 1.5 : -0.5);
-    ctx.rotate(armAngle);
-    drawLimb(ctx, 8, 14, colors.dark);
+    ctx.translate(-4, 8); // Hip pivot
+    // Standard cycle
+    const backLegAngle = isRunning ? Math.sin(runCycle) * limbSwing : (p.isSliding ? 1.2 : -0.2);
+    ctx.rotate(backLegAngle);
+    drawLimb(ctx, 11, 16, colors.dark);
     ctx.restore();
 
-    // 3. Tail (Wagging)
+    // 3. Tail
     if (!p.isSliding) {
         ctx.save();
-        ctx.translate(-15, 8);
+        ctx.translate(-16, 6);
         ctx.beginPath();
         ctx.strokeStyle = colors.body;
         ctx.lineWidth = 6;
         ctx.lineCap = 'round';
-        const tailWag = Math.sin(runCycle * 1.5) * 0.5;
+        const tailWag = Math.sin(runCycle * 1.5) * 0.4;
         ctx.rotate(tailWag - 0.5);
         ctx.moveTo(0, 0);
         ctx.quadraticCurveTo(-10, -5, -15, -10);
@@ -551,54 +517,51 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
     }
 
-    // 4. Body (Side View Oval)
+    // 4. Body
     ctx.fillStyle = colors.body;
     ctx.beginPath();
-    // Ellipse body tilted slightly
-    ctx.ellipse(0, 5, 18, 14, -0.1, 0, Math.PI*2);
+    ctx.ellipse(0, 4, 18, 13, -0.1, 0, Math.PI*2);
     ctx.fill();
 
     // Belly Patch
     ctx.fillStyle = colors.belly;
     ctx.beginPath();
-    ctx.ellipse(2, 6, 10, 8, -0.1, 0, Math.PI*2);
+    ctx.ellipse(2, 5, 10, 8, -0.1, 0, Math.PI*2);
     ctx.fill();
 
-    // 5. Head
-    const headY = -12;
-    ctx.translate(0, headY);
+    // 5. Head Group
+    ctx.save();
+    const headY = -14;
+    ctx.translate(2, headY); // Head bob
     
     // Ears
     ctx.fillStyle = colors.body;
-    // Left Ear
-    ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(-12, -18); ctx.lineTo(-2, -12); ctx.fill();
-    // Right Ear
-    ctx.beginPath(); ctx.moveTo(8, -8); ctx.lineTo(12, -18); ctx.lineTo(2, -12); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-12, -16); ctx.lineTo(-2, -10); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(8, -6); ctx.lineTo(12, -16); ctx.lineTo(2, -10); ctx.fill();
 
-    // Head Shape
+    // Face Shape
     ctx.beginPath();
-    ctx.ellipse(0, 0, 18, 15, 0, 0, Math.PI*2);
+    ctx.ellipse(0, 0, 19, 15, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // Face Details (Side/3Q View)
-    const faceX = 6;
+    // Facial Features
+    const faceX = 8; // Side profile offset
     
-    // Eyes
+    // Eye
     ctx.fillStyle = colors.face;
     if (p.isSliding || p.invincibleTimer > 0) {
-        // Squint
         ctx.beginPath();
-        ctx.moveTo(faceX - 3, -2); ctx.lineTo(faceX, 0); ctx.lineTo(faceX - 3, 2);
+        ctx.lineWidth = 2;
+        ctx.moveTo(faceX - 3, -1); ctx.lineTo(faceX, 1); ctx.lineTo(faceX - 3, 3);
         ctx.stroke();
+        ctx.lineWidth = 1; // Reset
     } else {
-        // Open Eye
         ctx.beginPath();
-        ctx.arc(faceX, -1, 2.5, 0, Math.PI*2);
+        ctx.ellipse(faceX, -1, 2.5, 3.5, 0, 0, Math.PI*2);
         ctx.fill();
-        // Highlight
         if (theme.id !== 'ninja') {
             ctx.fillStyle = 'white';
-            ctx.beginPath(); ctx.arc(faceX + 1, -2, 1, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(faceX + 1, -2, 1.2, 0, Math.PI*2); ctx.fill();
         }
     }
 
@@ -606,51 +569,45 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.fillStyle = colors.cheek;
     ctx.globalAlpha = 0.6;
     ctx.beginPath();
-    ctx.arc(faceX - 2, 4, 3, 0, Math.PI*2);
+    ctx.arc(faceX - 3, 5, 3.5, 0, Math.PI*2);
     ctx.fill();
     ctx.globalAlpha = 1.0;
 
-    // Snout/Nose
-    ctx.fillStyle = colors.face; // Dark nose
+    // Nose
+    ctx.fillStyle = colors.face;
     ctx.beginPath();
-    ctx.ellipse(faceX + 4, 1, 1.5, 1, 0, 0, Math.PI*2);
+    ctx.ellipse(faceX + 5, 1, 1.5, 1, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // Whiskers
-    ctx.strokeStyle = colors.dark;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(faceX + 4, 2); ctx.lineTo(faceX + 12, 0);
-    ctx.moveTo(faceX + 4, 3); ctx.lineTo(faceX + 12, 4);
-    ctx.stroke();
-
-    // HAT
-    const hatLag = (p.vx + (isRunning ? Math.sin(runCycle)*2 : 0)) * 0.1;
+    // Hat
+    const hatLag = (p.vx + (isRunning ? Math.sin(runCycle)*3 : 0)) * 0.15;
     ctx.save();
-    ctx.translate(0, -12); // Top of head
-    ctx.rotate(0.1); // Tilt back slightly
+    ctx.translate(0, -11); 
+    ctx.rotate(0.1); 
     drawHat(ctx, colors.hat, colors.hatBand, hatLag);
     ctx.restore();
 
-    ctx.translate(0, -headY); // Reset head trans
+    ctx.restore(); // End Head Group
 
-    // 6. Front Leg
+    // 6. Front Leg (Right Leg)
     ctx.save();
-    ctx.translate(-5, 10);
-    const frontLegAngle = isRunning ? Math.sin(runCycle + Math.PI) * 0.8 : (p.isSliding ? 1.2 : -0.2);
+    ctx.translate(-4, 8); // Hip pivot
+    // Opposite to Back Leg
+    const frontLegAngle = isRunning ? Math.sin(runCycle + Math.PI) * limbSwing : (p.isSliding ? 1.2 : -0.2);
     ctx.rotate(frontLegAngle);
-    drawLimb(ctx, 10, 16, colors.dark);
+    drawLimb(ctx, 11, 16, colors.body); // Lighter color for front limbs
     ctx.restore();
 
-    // 7. Front Arm
+    // 7. Front Arm (Right Arm)
     ctx.save();
-    ctx.translate(8, 5);
-    const frontArmAngle = isRunning ? Math.sin(runCycle) * 0.8 : (p.isSliding ? 1.5 : -0.5);
+    ctx.translate(2, -2); // Shoulder pivot
+    // Opposite to Front Leg
+    const frontArmAngle = isRunning ? Math.sin(runCycle) * limbSwing : (p.isSliding ? 1.5 : -0.5);
     ctx.rotate(frontArmAngle);
-    drawLimb(ctx, 8, 14, colors.dark);
+    drawLimb(ctx, 9, 14, colors.body);
     ctx.restore();
 
-    // Sliding Dust/Wind
+    // Speed Lines
     if (p.isSliding) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.lineWidth = 2;
@@ -662,7 +619,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     ctx.restore(); 
-    ctx.globalAlpha = 1.0; // Reset alpha
+    ctx.globalAlpha = 1.0; 
   };
 
   const tick = useCallback((time: number) => {
@@ -672,7 +629,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (!ctx) return;
 
     if (!lastFrameTimeRef.current) lastFrameTimeRef.current = time;
-    // Cap delta time to prevent massive jumps if frame drops or tab is inactive
     const deltaTime = Math.min((time - lastFrameTimeRef.current) / 16.67, 2.5);
     lastFrameTimeRef.current = time;
 
@@ -710,7 +666,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const p = playerRef.current;
         const groundY = canvas.height - 100;
         
-        // Invincible Timer
         if (p.invincibleTimer > 0) {
             p.invincibleTimer -= deltaTime;
         }
@@ -718,7 +673,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         coinRotationRef.current += 0.05 * deltaTime;
         const wasGrounded = p.isGrounded;
 
-        // --- Physics (Apply Delta Time) ---
         p.vy += GRAVITY * deltaTime;
         p.y += p.vy * deltaTime;
 
@@ -790,13 +744,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             if (t.opacity <= 0 || t.scaleX < 0.1) trailsRef.current.splice(i, 1);
         }
 
-        // Speed & Distance
         gameSpeedRef.current = Math.min(MAX_SPEED, levelConfig.baseSpeed + distanceRef.current * 0.00005);
         distanceRef.current += gameSpeedRef.current * deltaTime;
         scoreRef.current = Math.floor(distanceRef.current / 10) + bonusScoreRef.current;
         onScoreUpdate(scoreRef.current);
 
-        // --- Background Updates ---
         hillsRef.current.forEach(h => {
             h.x -= (gameSpeedRef.current * 0.1) * deltaTime;
             if (h.x + h.w < 0) { h.x = canvas.width + 100; h.h = 100 + Math.random() * 150; }
@@ -811,12 +763,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         groundDecorRef.current.forEach(d => { d.x -= gameSpeedRef.current * deltaTime; });
         groundDecorRef.current = groundDecorRef.current.filter(d => d.x > -50);
 
-        // --- Obstacle Spawning ---
         const lastObstacle = obstaclesRef.current[obstaclesRef.current.length - 1];
         const currentMinGap = levelConfig.minGap + (gameSpeedRef.current * 10); 
         
         if (!lastObstacle || (canvas.width - lastObstacle.x > currentMinGap)) {
-          if (Math.random() < 0.6 * deltaTime) { // Adjust spawn rate for delta time
+          if (Math.random() < 0.6 * deltaTime) { 
             const typeVal = Math.random();
             let type = EntityType.OBSTACLE_GROUND;
             let subtype: Entity['subtype'] = 'MUSHROOM';
@@ -838,24 +789,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 w = 40; h = 40;
                 color = subtype === 'SHIELD' ? THEME_COLORS.shield : THEME_COLORS.magnet;
             } else {
-                // SPECIAL OBSTACLE CHECK (Level 3+)
-                const projectileChance = levelConfig.id >= 3 ? 0.15 : 0; // Reduced to 0.15
-                const phasingChance = levelConfig.id >= 4 ? 0.12 : 0; // Reduced to 0.12
+                const projectileChance = levelConfig.id >= 3 ? 0.15 : 0; 
+                const phasingChance = levelConfig.id >= 4 ? 0.12 : 0; 
                 
-                // --- MODIFIED LOGIC START ---
-                // Increase chance of Air Spawns (Obstacles/Stars) in Level 3+
                 let airObstacleChance = 0.3;
                 if (levelConfig.id >= 3) airObstacleChance = 0.5;
-                // --- MODIFIED LOGIC END ---
 
-                // PREVENT CONSECUTIVE PROJECTILES
                 const lastWasProjectile = lastObstacle && lastObstacle.subtype === 'PROJECTILE';
 
                 if (Math.random() < projectileChance && !lastWasProjectile) {
                     type = EntityType.OBSTACLE_AIR;
                     subtype = 'PROJECTILE';
                     w = 40; h = 20;
-                    yPos = groundY - 60; // Head height
+                    yPos = groundY - 60; 
                     color = THEME_COLORS.projectile;
                 } else if (Math.random() < phasingChance) {
                     type = EntityType.OBSTACLE_GROUND;
@@ -864,25 +810,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     yPos = groundY - h;
                     color = THEME_COLORS.phasingVisible;
                 } else if (typeVal > (1 - airObstacleChance)) {
-                  // AIR ENTITY SPAWN (Obstacles OR Stars for Double Jump)
-                  
-                  // --- MODIFIED LOGIC START ---
-                  // Force High Jump more often in Level 3+
                   const highJumpThreshold = levelConfig.id >= 3 ? 0.3 : 0.4;
                   const isHighJump = Math.random() > highJumpThreshold;
                   
-                  // If it's a high jump, put it high enough to require double jump (groundY - 240)
-                  // Low jump is groundY - 120
                   yPos = isHighJump ? groundY - 240 : groundY - 120;
-                  // --- MODIFIED LOGIC END ---
                   
-                  // Star Reward Chance Increased from 40% to 60%
                   const isStarReward = Math.random() < 0.6;
 
                   if (isStarReward) {
                      type = EntityType.COIN;
                      subtype = 'STAR';
-                     w = 55; h = 55; // Big star
+                     w = 55; h = 55; 
                      color = THEME_COLORS.coin;
                   } else {
                      type = EntityType.OBSTACLE_AIR;
@@ -898,7 +836,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                   initialY = yPos;
                   if (levelConfig.hasMovingObstacles && type !== EntityType.COIN) floating = true;
-                } else if (typeVal > 0.35) { // Threshold increased from 0.2 to 0.35 (More Ground Stars)
+                } else if (typeVal > 0.35) { 
                    type = EntityType.OBSTACLE_GROUND;
                    const rand = Math.random();
                    const subtypes: Entity['subtype'][] = ['MUSHROOM', 'SPIKE', 'PILLAR'];
@@ -914,7 +852,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                    else if (subtype === 'FIREBALL') { w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.fireball; floating = true; initialY = yPos; }
                    else { w = 40; h = 40; yPos = groundY - h; color = THEME_COLORS.mushroomCap; }
                 } else {
-                   // Ground Star
                    type = EntityType.COIN;
                    subtype = 'STAR';
                    yPos = groundY - 120 - (Math.random() * 40);
@@ -932,7 +869,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        // --- Update Entities ---
         cloudsRef.current.forEach(c => {
           c.x -= c.s * deltaTime;
           if (c.x + c.w + 50 < 0) c.x = canvas.width + 50;
@@ -959,8 +895,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
 
           if (obs.subtype === 'PROJECTILE') {
-              // Projectiles fly faster than game speed from right to left
-              // REDUCED SPEED: from 1.5x to 1.15x
               obs.x -= (gameSpeedRef.current * 1.15) * deltaTime;
           } else if (p.magnetTimer > 0 && obs.type === EntityType.COIN) {
               const dx = p.x - obs.x;
@@ -978,7 +912,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           const collisionMargin = (obs.subtype === 'SPIKE' || obs.subtype === 'CRYSTAL' || obs.type === EntityType.POWERUP || obs.subtype === 'PROJECTILE') ? 0 : 10;
           
-          // Check collision only if visible (for phasing)
           if (obs.isVisible !== false &&
             p.x < obs.x + obs.width - collisionMargin &&
             p.x + p.width > obs.x + collisionMargin &&
@@ -1012,31 +945,23 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                playSfx('powerup');
                obs.markedForDeletion = true;
             } else {
-               // HIT OBSTACLE
-               
-               // 1. Invincibility Check (After Revive)
                if (p.invincibleTimer > 0) {
-                   // Do nothing, phase through
                } 
-               // 2. Shield Check
                else if (p.hasShield) {
                    p.hasShield = false;
                    obs.markedForDeletion = true;
                    createSparkles(obs.x + obs.width/2, obs.y + obs.height/2, 15, '#ffffff');
                    playSfx('hit');
                } 
-               // 3. Revive Potion Check
                else if (revivePotions > 0) {
                    onConsumeRevive();
-                   p.invincibleTimer = 60; // ~1 second invincibility
+                   p.invincibleTimer = 60; 
                    createSparkles(p.x + p.width/2, p.y + p.height/2, 20, '#ff00ff');
-                   // Clear nearby obstacles to prevent instant death again
                    obstaclesRef.current.forEach(o => {
                        if (Math.abs(o.x - p.x) < 300) o.markedForDeletion = true;
                    });
-                   playSfx('powerup'); // Sound for revive
+                   playSfx('powerup'); 
                }
-               // 4. Game Over
                else {
                   playSfx('hit');
                   playSfx('gameOver');
@@ -1065,14 +990,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       } 
     } 
 
-    // --- Draw ---
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, THEME_COLORS.skyTop);
     gradient.addColorStop(1, THEME_COLORS.skyBottom);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // BACKGROUNDS 
     ctx.fillStyle = '#e0f2fe'; 
     hillsRef.current.forEach(h => {
         ctx.beginPath();
@@ -1096,7 +1019,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fill();
     });
 
-    // Clouds
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     cloudsRef.current.forEach(c => {
       ctx.beginPath();
@@ -1107,7 +1029,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fill();
     });
 
-    // Floor
     const groundY = canvas.height - 100;
     ctx.fillStyle = THEME_COLORS.ground;
     ctx.fillRect(0, groundY, canvas.width, 100);
@@ -1119,7 +1040,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fill();
     }
 
-    // GROUND DECOR
     groundDecorRef.current.forEach(d => {
         if (d.type === 'GRASS') {
             ctx.fillStyle = THEME_COLORS.grass;
@@ -1209,11 +1129,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.fill();
 
           } else if (obs.type === EntityType.OBSTACLE_AIR) {
-            // Draw Ghost or Bat or Projectile
             if (obs.subtype === 'PROJECTILE') {
                 ctx.fillStyle = THEME_COLORS.projectile;
                 ctx.beginPath();
-                // Rocket shape
                 ctx.moveTo(obs.x + obs.width, cy);
                 ctx.lineTo(obs.x, cy - 10);
                 ctx.lineTo(obs.x + 10, cy);
@@ -1221,7 +1139,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
-                // Flame
                 ctx.fillStyle = 'orange';
                 ctx.beginPath();
                 ctx.moveTo(obs.x + 10, cy - 5);
@@ -1274,7 +1191,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.fill();
             }
           } else {
-             // GROUND OBSTACLES
              if (obs.subtype === 'PHASING') {
                 ctx.save();
                 if (obs.isVisible) {

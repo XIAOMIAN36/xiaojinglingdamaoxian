@@ -104,7 +104,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
     <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-6">
       
       {/* Top Bar (HUD / Stats) */}
-      <div className="flex justify-between items-start w-full pointer-events-auto">
+      <div className="flex justify-between items-start w-full pointer-events-auto relative z-20">
          {/* Stats (Visible in Menu) */}
          {gameState === GameState.MENU && (
              <div className="flex gap-2 sm:gap-4">

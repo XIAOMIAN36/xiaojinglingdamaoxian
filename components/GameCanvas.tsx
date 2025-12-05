@@ -449,19 +449,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     
     if (p.landTimer > 0) {
         const t = p.landTimer / 12; 
-        const squash = Math.sin(t * Math.PI) * 0.5;
-        scaleX = 1 + squash * 0.4;
-        scaleY = 1 - squash * 0.4;
+        const squash = Math.sin(t * Math.PI) * 0.3; // Reduced squash
+        scaleX = 1 + squash * 0.2;
+        scaleY = 1 - squash * 0.2;
         translateY = (p.height / 2) * (1 - scaleY);
     } else if (!p.isGrounded) {
         scaleX = 0.95; scaleY = 1.05; 
         skewX = 0.1; // Lean into jump
     } else {
         // Subtle running bounce
-        const bounce = Math.abs(Math.sin(distance * 0.3)) * 0.05;
+        const bounce = Math.abs(Math.sin(distance * 0.2)) * 0.03; // Slower bounce, less amplitude
         scaleX = 1 + bounce; scaleY = 1 - bounce;
         translateY = (p.height / 2) * (1 - scaleY);
-        skewX = -0.15; // Forward lean running
+        skewX = -0.05; // Less forward lean (was -0.15)
     }
     
     if (p.isSliding) {
@@ -475,18 +475,18 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.scale(scaleX, scaleY);
 
     const isRunning = p.isGrounded && !p.isSliding && p.landTimer <= 0;
-    const runCycle = (distance * 0.3); // Slower, more natural cycle
-    const limbSwing = 0.6; // Max rotation in radians (about 35 degrees)
+    // Slower animation cycle relative to distance
+    const runCycle = (distance * 0.25); 
+    const limbSwing = 0.5; // Reduced swing amplitude
 
     // --- DRAW LAYERS (Back to Front) ---
 
-    // 1. Back Arm (Left Arm - Swings opposite to Left Leg/Back Leg)
+    // 1. Back Arm (Left Arm)
+    // Opposite to Left Leg. Standard human running: Left Leg forward = Right Arm forward.
+    // So Left Arm is forward when Right Leg is forward.
+    // Right Leg = sin(runCycle + PI). So Left Arm = sin(runCycle + PI).
     ctx.save();
     ctx.translate(2, -2); // Shoulder pivot
-    // If Back Leg (Left) is forward (sin > 0), Back Arm (Left) should be back (sin < 0)? 
-    // Wait, usually contralateral: Left Leg forward = Right Arm forward.
-    // So Left Arm should be in phase with Right Leg.
-    // Right Leg = sin(cycle + PI). So Left Arm = sin(cycle + PI).
     const backArmAngle = isRunning ? Math.sin(runCycle + Math.PI) * limbSwing : (p.isSliding ? 1.5 : -0.5);
     ctx.rotate(backArmAngle);
     drawLimb(ctx, 9, 14, colors.dark); // Slightly darker for depth
@@ -494,7 +494,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     // 2. Back Leg (Left Leg)
     ctx.save();
-    ctx.translate(-4, 8); // Hip pivot
+    ctx.translate(-2, 8); // Hip pivot (adjusted)
     // Standard cycle
     const backLegAngle = isRunning ? Math.sin(runCycle) * limbSwing : (p.isSliding ? 1.2 : -0.2);
     ctx.rotate(backLegAngle);
@@ -520,13 +520,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     // 4. Body
     ctx.fillStyle = colors.body;
     ctx.beginPath();
-    ctx.ellipse(0, 4, 18, 13, -0.1, 0, Math.PI*2);
+    ctx.ellipse(0, 4, 18, 13, -0.05, 0, Math.PI*2);
     ctx.fill();
 
     // Belly Patch
     ctx.fillStyle = colors.belly;
     ctx.beginPath();
-    ctx.ellipse(2, 5, 10, 8, -0.1, 0, Math.PI*2);
+    ctx.ellipse(2, 5, 10, 8, -0.05, 0, Math.PI*2);
     ctx.fill();
 
     // 5. Head Group
@@ -580,10 +580,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.fill();
 
     // Hat
-    const hatLag = (p.vx + (isRunning ? Math.sin(runCycle)*3 : 0)) * 0.15;
+    const hatLag = (p.vx + (isRunning ? Math.sin(runCycle)*2 : 0)) * 0.1;
     ctx.save();
     ctx.translate(0, -11); 
-    ctx.rotate(0.1); 
+    ctx.rotate(0.05); 
     drawHat(ctx, colors.hat, colors.hatBand, hatLag);
     ctx.restore();
 
@@ -591,7 +591,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     // 6. Front Leg (Right Leg)
     ctx.save();
-    ctx.translate(-4, 8); // Hip pivot
+    ctx.translate(-2, 8); // Hip pivot (adjusted)
     // Opposite to Back Leg
     const frontLegAngle = isRunning ? Math.sin(runCycle + Math.PI) * limbSwing : (p.isSliding ? 1.2 : -0.2);
     ctx.rotate(frontLegAngle);

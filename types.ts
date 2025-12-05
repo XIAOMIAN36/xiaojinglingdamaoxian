@@ -25,9 +25,11 @@ export interface Entity {
   color: string;
   type: EntityType;
   markedForDeletion?: boolean;
-  subtype?: 'SPIKE' | 'PILLAR' | 'MUSHROOM' | 'BIRD' | 'GHOST' | 'STAR' | 'SHIELD' | 'MAGNET' | 'LOG' | 'BAT' | 'CRYSTAL' | 'FIREBALL';
+  subtype?: 'SPIKE' | 'PILLAR' | 'MUSHROOM' | 'BIRD' | 'GHOST' | 'STAR' | 'SHIELD' | 'MAGNET' | 'LOG' | 'BAT' | 'CRYSTAL' | 'FIREBALL' | 'PROJECTILE' | 'PHASING';
   initialY?: number; // For floating animations
   floating?: boolean;
+  isVisible?: boolean; // For Phasing obstacles
+  phaseTimer?: number; // For Phasing logic
 }
 
 export interface Player extends Entity {

@@ -1,13 +1,13 @@
 
 import { CharacterTheme, LevelConfig } from "./types";
 
-export const GRAVITY = 0.9; // Significantly increased for heavy, fast falling
-export const JUMP_FORCE = -19; // Stronger jump to counteract high gravity
-export const DOUBLE_JUMP_FORCE = -15; 
+export const GRAVITY = 1.2; // Increased for very fast, heavy falling
+export const JUMP_FORCE = -22; // Stronger jump to counteract high gravity
+export const DOUBLE_JUMP_FORCE = -18; 
 export const GROUND_Y = 400; 
 export const GAME_SPEED_START = 5.0; 
-export const MAX_SPEED = 15.0; // Higher cap for later levels
-export const MIN_OBSTACLE_GAP = 350; 
+export const MAX_SPEED = 20.0; // Higher cap
+export const MIN_OBSTACLE_GAP = 300; 
 
 export const MAGNET_DURATION = 1000; 
 
@@ -27,7 +27,7 @@ export const SHARE_IMAGE_URL = "https://cdn.pixabay.com/photo/2022/10/05/20/43/h
 export const LEVELS: LevelConfig[] = [
   {
     id: 1,
-    targetStars: 10, // Much easier start
+    targetStars: 10, 
     baseSpeed: 5.0,
     minGap: 450, 
     hasMovingObstacles: false,
@@ -35,35 +35,35 @@ export const LEVELS: LevelConfig[] = [
   },
   {
     id: 2,
-    targetStars: 25,
-    baseSpeed: 6.5, // Faster
-    minGap: 400, // More obstacles
+    targetStars: 15,
+    baseSpeed: 8.0, 
+    minGap: 380, 
     hasMovingObstacles: false,
-    description: "丛林探险"
+    description: "丛林疾行"
   },
   {
     id: 3,
-    targetStars: 45,
-    baseSpeed: 8.0, // Fast
-    minGap: 360,
+    targetStars: 20,
+    baseSpeed: 9.5, 
+    minGap: 340,
     hasMovingObstacles: true, 
-    description: "幽灵出没"
+    description: "飞弹危机"
   },
   {
     id: 4,
-    targetStars: 70,
-    baseSpeed: 9.5, // Very Fast
-    minGap: 330,
+    targetStars: 25,
+    baseSpeed: 11.0, 
+    minGap: 300,
     hasMovingObstacles: true,
-    description: "极速挑战"
+    description: "幻影迷踪"
   },
   {
     id: 5,
-    targetStars: 100,
-    baseSpeed: 11.0, // Extreme
-    minGap: 300, // Intense density
+    targetStars: 100, // Endless challenge basically
+    baseSpeed: 15.0, // Extreme speed
+    minGap: 220, // Extreme density
     hasMovingObstacles: true,
-    description: "大师试炼"
+    description: "极限挑战"
   }
 ];
 
@@ -157,6 +157,9 @@ export const THEME_COLORS = {
   crystal: '#06b6d4', // Cyan 500
   fireball: '#f97316', // Orange 500
   fireballCore: '#fef08a', // Yellow 200
+  projectile: '#ef4444', // Red Rocket
+  phasingVisible: '#a855f7', // Purple
+  phasingHidden: 'rgba(168, 85, 247, 0.2)',
   
   // VFX & Decor
   dust: '#ffffff',

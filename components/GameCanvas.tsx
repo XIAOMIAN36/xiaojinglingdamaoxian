@@ -268,7 +268,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         createDustParticles(p.x + p.width / 2, p.y + p.height, 5); // Slide Dust
         playSfx('slide');
       } else if (!p.isGrounded) {
-        p.vy = 35; // Very fast drop (increased from 15 to match 0.9 gravity)
+        // FAST FALL
+        p.vy = 50; // Extremely fast manual drop
+        playSfx('slide'); // Audio feedback for fast fall
       }
     }
   }, [gameState, activeTheme, playSfx]);
@@ -754,6 +756,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             let color = THEME_COLORS.obstacle;
             let initialY = yPos;
             let floating = false;
+            let isVisible = true;
+            let phaseTimer = 0;
 
             if (Math.random() < 0.08) { 
                 type = EntityType.POWERUP;
@@ -764,19 +768,53 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 w = 40; h = 40;
                 color = subtype === 'SHIELD' ? THEME_COLORS.shield : THEME_COLORS.magnet;
             } else {
-                if (typeVal > 0.75) {
-                  type = EntityType.OBSTACLE_AIR;
-                  yPos = groundY - 120;
-                  initialY = yPos;
-                  w = 50; h = 40;
-                  color = THEME_COLORS.obstacleAir;
-                  subtype = 'GHOST';
-                  if (levelConfig.id >= 3 && Math.random() > 0.5) {
-                      subtype = 'BAT';
-                      color = THEME_COLORS.bat;
+                // SPECIAL OBSTACLE CHECK (Level 3+)
+                const projectileChance = levelConfig.id >= 3 ? 0.2 : 0;
+                const phasingChance = levelConfig.id >= 4 ? 0.15 : 0;
+                const airObstacleChance = 0.25;
+
+                if (Math.random() < projectileChance) {
+                    type = EntityType.OBSTACLE_AIR;
+                    subtype = 'PROJECTILE';
+                    w = 40; h = 20;
+                    yPos = groundY - 60; // Head height
+                    color = THEME_COLORS.projectile;
+                } else if (Math.random() < phasingChance) {
+                    type = EntityType.OBSTACLE_GROUND;
+                    subtype = 'PHASING';
+                    w = 30; h = 60;
+                    yPos = groundY - h;
+                    color = THEME_COLORS.phasingVisible;
+                } else if (typeVal > (1 - airObstacleChance)) {
+                  // AIR ENTITY SPAWN (Obstacles OR Stars for Double Jump)
+                  // Standard Air Position or High Jump Position
+                  const isHighJump = Math.random() > 0.4; // 60% chance for high jump height
+                  yPos = isHighJump ? groundY - 190 : groundY - 120; // 190 is approx double jump height
+                  
+                  // Decide if it's a Trap or a Reward (Star) at this height
+                  // If it's high up, 40% chance it's a star, 60% obstacle
+                  const isStarReward = Math.random() < 0.4;
+
+                  if (isStarReward) {
+                     type = EntityType.COIN;
+                     subtype = 'STAR';
+                     w = 55; h = 55; // Big star
+                     color = THEME_COLORS.coin;
+                  } else {
+                     type = EntityType.OBSTACLE_AIR;
+                     color = THEME_COLORS.obstacleAir;
+                     subtype = 'GHOST';
+                     w = 50; h = 40;
+                     
+                     if (levelConfig.id >= 3 && Math.random() > 0.5) {
+                        subtype = 'BAT';
+                        color = THEME_COLORS.bat;
+                     }
                   }
-                  if (levelConfig.hasMovingObstacles) floating = true;
-                } else if (typeVal > 0.35) {
+
+                  initialY = yPos;
+                  if (levelConfig.hasMovingObstacles && type !== EntityType.COIN) floating = true;
+                } else if (typeVal > 0.2) {
                    type = EntityType.OBSTACLE_GROUND;
                    const rand = Math.random();
                    const subtypes: Entity['subtype'][] = ['MUSHROOM', 'SPIKE', 'PILLAR'];
@@ -796,14 +834,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                    subtype = 'STAR';
                    yPos = groundY - 120 - (Math.random() * 40);
                    initialY = yPos;
-                   w = 30; h = 30; color = THEME_COLORS.coin;
+                   w = 55; h = 55; // Increased size from 30 to 55 for better visibility/hitbox
+                   color = THEME_COLORS.coin;
                 }
             }
 
             obstaclesRef.current.push({
               x: canvas.width + 100, y: yPos, width: w, height: h,
               vx: -gameSpeedRef.current, vy: 0, color: color, type: type, subtype: subtype,
-              initialY, floating
+              initialY, floating, isVisible, phaseTimer
             });
           }
         }
@@ -817,6 +856,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         for (let i = obstaclesRef.current.length - 1; i >= 0; i--) {
           const obs = obstaclesRef.current[i];
           
+          if (obs.subtype === 'PHASING') {
+              if (obs.phaseTimer === undefined) obs.phaseTimer = 0;
+              obs.phaseTimer += deltaTime;
+              if (obs.phaseTimer > 60) {
+                  obs.isVisible = !obs.isVisible;
+                  obs.phaseTimer = 0;
+              }
+          }
+
           if (obs.floating && obs.initialY !== undefined) {
              if (obs.subtype === 'FIREBALL') {
                  obs.y = obs.initialY - Math.abs(Math.sin(frameCountRef.current * 0.1)) * 60;
@@ -825,7 +873,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
              }
           }
 
-          if (p.magnetTimer > 0 && obs.type === EntityType.COIN) {
+          if (obs.subtype === 'PROJECTILE') {
+              // Projectiles fly faster than game speed from right to left
+              obs.x -= (gameSpeedRef.current * 1.5) * deltaTime;
+          } else if (p.magnetTimer > 0 && obs.type === EntityType.COIN) {
               const dx = p.x - obs.x;
               const dy = p.y - obs.y;
               const dist = Math.sqrt(dx*dx + dy*dy);
@@ -839,9 +890,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               obs.x -= gameSpeedRef.current * deltaTime;
           }
 
-          const collisionMargin = (obs.subtype === 'SPIKE' || obs.subtype === 'CRYSTAL' || obs.type === EntityType.POWERUP) ? 0 : 10;
+          const collisionMargin = (obs.subtype === 'SPIKE' || obs.subtype === 'CRYSTAL' || obs.type === EntityType.POWERUP || obs.subtype === 'PROJECTILE') ? 0 : 10;
           
-          if (
+          // Check collision only if visible (for phasing)
+          if (obs.isVisible !== false &&
             p.x < obs.x + obs.width - collisionMargin &&
             p.x + p.width > obs.x + collisionMargin &&
             p.y < obs.y + obs.height - collisionMargin &&
@@ -1051,8 +1103,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.fill();
 
           } else if (obs.type === EntityType.OBSTACLE_AIR) {
-            // Draw Ghost or Bat
-            if (obs.subtype === 'BAT') {
+            // Draw Ghost or Bat or Projectile
+            if (obs.subtype === 'PROJECTILE') {
+                ctx.fillStyle = THEME_COLORS.projectile;
+                ctx.beginPath();
+                // Rocket shape
+                ctx.moveTo(obs.x + obs.width, cy);
+                ctx.lineTo(obs.x, cy - 10);
+                ctx.lineTo(obs.x + 10, cy);
+                ctx.lineTo(obs.x, cy + 10);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Flame
+                ctx.fillStyle = 'orange';
+                ctx.beginPath();
+                ctx.moveTo(obs.x + 10, cy - 5);
+                ctx.lineTo(obs.x + 25, cy);
+                ctx.lineTo(obs.x + 10, cy + 5);
+                ctx.fill();
+            } else if (obs.subtype === 'BAT') {
                 ctx.fillStyle = THEME_COLORS.bat;
                 ctx.beginPath();
                 ctx.ellipse(cx, cy, 12, 12, 0, 0, Math.PI*2);
@@ -1098,8 +1168,30 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.fill();
             }
           } else {
-            // GROUND OBSTACLES
-             if (obs.subtype === 'SPIKE') {
+             // GROUND OBSTACLES
+             if (obs.subtype === 'PHASING') {
+                ctx.save();
+                if (obs.isVisible) {
+                    ctx.globalAlpha = 0.9;
+                    ctx.fillStyle = THEME_COLORS.phasingVisible;
+                    ctx.strokeStyle = THEME_COLORS.phasingVisible;
+                    ctx.setLineDash([]);
+                } else {
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillStyle = THEME_COLORS.phasingHidden;
+                    ctx.strokeStyle = THEME_COLORS.phasingVisible;
+                    ctx.setLineDash([5, 5]);
+                }
+                ctx.beginPath();
+                ctx.rect(obs.x, obs.y, obs.width, obs.height);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.fillText(obs.isVisible ? '!' : '?', cx - 2, cy + 4);
+                ctx.restore();
+
+             } else if (obs.subtype === 'SPIKE') {
                 ctx.fillStyle = THEME_COLORS.spike;
                 ctx.beginPath();
                 const spikes = 4;

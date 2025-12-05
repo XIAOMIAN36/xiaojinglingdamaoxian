@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GameCanvas from './components/GameCanvas';
 import UIOverlay from './components/UIOverlay';
-import { GameState, DailyMission, PlayerStats, CharacterId, LevelConfig } from './types';
+import { GameState, DailyMission, PlayerStats, CharacterId, LevelConfig, AchievementEntry } from './types';
 import { generateDailyMission } from './services/geminiService';
 import { CHARACTER_THEMES, BGM_URL, LEVELS, SHOP_ITEMS } from './constants';
 
@@ -163,6 +163,19 @@ const App: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [magnetProgress, setMagnetProgress] = useState(0);
   
+  // Achievement / Leaderboard Data
+  const [achievements, setAchievements] = useState<AchievementEntry[]>(() => {
+      const saved = localStorage.getItem('cloud_hopper_achievements');
+      return saved ? JSON.parse(saved) : [];
+  });
+
+  // Track Level 5 Run Stats
+  const [levelRunStats, setLevelRunStats] = useState({
+      startTime: 0,
+      revivesUsed: 0,
+      retryCount: 0
+  });
+
   // Persistent Stats
   const [stats, setStats] = useState<PlayerStats>(() => {
       const saved = localStorage.getItem('cloud_hopper_stats');
@@ -171,7 +184,8 @@ const App: React.FC = () => {
           return {
               ...loaded,
               maxLevelReached: loaded.maxLevelReached || 1, // Backward compatibility
-              revivePotions: loaded.revivePotions || 0
+              revivePotions: loaded.revivePotions || 0,
+              playerName: loaded.playerName || ''
           };
       }
       return {
@@ -181,7 +195,8 @@ const App: React.FC = () => {
           unlockedCharacters: ['classic'],
           selectedCharacter: 'classic',
           maxLevelReached: 1,
-          revivePotions: 0
+          revivePotions: 0,
+          playerName: ''
       };
   });
 
@@ -236,6 +251,10 @@ const App: React.FC = () => {
   }, [stats]);
   
   useEffect(() => {
+      localStorage.setItem('cloud_hopper_achievements', JSON.stringify(achievements));
+  }, [achievements]);
+
+  useEffect(() => {
     handleGenerateMission();
   }, []);
 
@@ -252,6 +271,14 @@ const App: React.FC = () => {
     setScore(0);
     setStarsCollected(0);
     setMagnetProgress(0);
+    
+    // Reset or Initialize Level Run Stats
+    setLevelRunStats(prev => ({
+        startTime: Date.now(),
+        revivesUsed: 0,
+        retryCount: levelId === 5 ? prev.retryCount : 0 // Keep retries if staying on lvl 5, else reset? Let's keep logic simple: reset on Menu, increment on Retry
+    }));
+
     setGameState(GameState.PLAYING);
     playBGM();
     playSfx('gameStart');
@@ -268,9 +295,29 @@ const App: React.FC = () => {
 
   const handleQuit = () => {
       setGameState(GameState.MENU);
+      // Reset level 5 retries when quitting to menu
+      setLevelRunStats({ startTime: 0, revivesUsed: 0, retryCount: 0 });
   };
   
   const handleLevelComplete = () => {
+      // Level 5 Achievement Check
+      if (currentLevel === 5) {
+          const endTime = Date.now();
+          const timeTaken = Math.floor((endTime - levelRunStats.startTime) / 1000);
+          
+          const newAchievement: AchievementEntry = {
+              id: Date.now().toString(),
+              playerName: stats.playerName || 'Anonymous',
+              timeTaken: timeTaken,
+              revivesUsed: levelRunStats.revivesUsed,
+              retryCount: levelRunStats.retryCount,
+              date: new Date().toLocaleDateString(),
+              characterId: stats.selectedCharacter
+          };
+          
+          setAchievements(prev => [...prev, newAchievement]);
+      }
+
       // Unlock next level logic
       if (currentLevel < 5 && stats.maxLevelReached <= currentLevel) {
           setStats(prev => ({
@@ -289,9 +336,12 @@ const App: React.FC = () => {
         missionBonus = 100; 
         playSfx('missionComplete');
     }
-    // Add coins from star pickup (roughly estimated or exact if we tracked coin entity pickup)
-    // For now, we assume stars collected = bonus coins
     coinsEarned += starsCollected * 5; 
+    
+    // Increment retry count for this session if it's Level 5
+    if (currentLevel === 5) {
+        setLevelRunStats(prev => ({ ...prev, retryCount: prev.retryCount + 1 }));
+    }
 
     setStats(prev => ({
         ...prev,
@@ -349,6 +399,14 @@ const App: React.FC = () => {
           ...prev,
           revivePotions: Math.max(0, (prev.revivePotions || 0) - 1)
       }));
+      // Track usage for achievement
+      if (currentLevel === 5) {
+          setLevelRunStats(prev => ({ ...prev, revivesUsed: prev.revivesUsed + 1 }));
+      }
+  };
+
+  const handleSetName = (name: string) => {
+      setStats(prev => ({ ...prev, playerName: name }));
   };
 
   // Get current level config
@@ -390,6 +448,8 @@ const App: React.FC = () => {
         currentLevelConfig={currentLevelConfig}
         magnetProgress={magnetProgress}
         onBuyShopItem={handleBuyShopItem}
+        onSetName={handleSetName}
+        achievements={achievements}
       />
     </div>
   );

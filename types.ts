@@ -79,6 +79,7 @@ export interface CharacterTheme {
 }
 
 export interface PlayerStats {
+  playerName: string; // New: Player Name
   totalCoins: number;
   totalScore: number;
   highScore: number;
@@ -86,6 +87,16 @@ export interface PlayerStats {
   selectedCharacter: CharacterId;
   maxLevelReached: number; // 1 to 5
   revivePotions: number;
+}
+
+export interface AchievementEntry {
+  id: string;
+  playerName: string;
+  timeTaken: number; // in seconds
+  revivesUsed: number;
+  retryCount: number;
+  date: string;
+  characterId: CharacterId;
 }
 
 export interface LevelConfig {

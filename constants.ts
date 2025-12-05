@@ -1,5 +1,5 @@
 
-import { CharacterTheme, LevelConfig } from "./types";
+import { CharacterTheme, LevelConfig, AchievementEntry } from "./types";
 
 export const GRAVITY = 1.2; 
 export const JUMP_FORCE = -22; 
@@ -32,6 +32,19 @@ export const SHOP_ITEMS = {
         description: '抵挡一次致命伤害并自动复活'
     }
 };
+
+export const RANDOM_NAMES = [
+    "疾风剑客", "云端漫步", "幸运小猫", "追风少年", "闪电侠", 
+    "无敌勇者", "星际旅人", "暗夜忍者", "快乐肥宅", "萌萌哒",
+    "不吃香菜", "熬夜冠军", "跑酷之王", "路过的高手", "神秘客"
+];
+
+export const MOCK_LEADERBOARD: AchievementEntry[] = [
+    { id: 'm1', playerName: '速通大神', timeTaken: 45, revivesUsed: 0, retryCount: 2, date: '2023-10-01', characterId: 'ninja' },
+    { id: 'm2', playerName: '氪金战士', timeTaken: 52, revivesUsed: 3, retryCount: 0, date: '2023-10-05', characterId: 'alien' },
+    { id: 'm3', playerName: '萌新路过', timeTaken: 68, revivesUsed: 1, retryCount: 15, date: '2023-10-12', characterId: 'classic' },
+    { id: 'm4', playerName: '极致手速', timeTaken: 42, revivesUsed: 0, retryCount: 5, date: '2023-10-20', characterId: 'ninja' },
+];
 
 export const LEVELS: LevelConfig[] = [
   {

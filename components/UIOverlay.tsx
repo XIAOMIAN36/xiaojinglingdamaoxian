@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
-import { GameState, DailyMission, CharacterTheme, CharacterId, PlayerStats, LevelConfig } from '../types';
-import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight, ShoppingCart, Heart } from 'lucide-react';
-import { CHARACTER_THEMES, LEVELS, SHOP_ITEMS } from '../constants';
+import React, { useState, useEffect } from 'react';
+import { GameState, DailyMission, CharacterTheme, CharacterId, PlayerStats, LevelConfig, AchievementEntry } from '../types';
+import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight, ShoppingCart, Heart, Dice5, Medal } from 'lucide-react';
+import { CHARACTER_THEMES, LEVELS, SHOP_ITEMS, RANDOM_NAMES, MOCK_LEADERBOARD } from '../constants';
 
 interface UIOverlayProps {
   gameState: GameState;
@@ -24,6 +24,8 @@ interface UIOverlayProps {
   currentLevelConfig: LevelConfig;
   magnetProgress: number;
   onBuyShopItem: (itemId: string) => void;
+  onSetName: (name: string) => void;
+  achievements: AchievementEntry[];
 }
 
 const CharacterAvatar = ({ theme }: { theme: CharacterTheme }) => (
@@ -90,31 +92,85 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   toggleAudio,
   currentLevelConfig,
   magnetProgress,
-  onBuyShopItem
+  onBuyShopItem,
+  onSetName,
+  achievements
 }) => {
   const [showCharSelect, setShowCharSelect] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [showShareHint, setShowShareHint] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [tempName, setTempName] = useState('');
+  const [showNameModal, setShowNameModal] = useState(false);
+
+  useEffect(() => {
+    if (!stats.playerName) {
+        setShowNameModal(true);
+        setTempName(getRandomName());
+    }
+  }, [stats.playerName]);
 
   const handleShareClick = () => {
     setShowShareHint(true);
   };
 
+  const getRandomName = () => {
+      return RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+  };
+
+  const handleRandomizeName = () => {
+      setTempName(getRandomName());
+  };
+
+  const handleConfirmName = () => {
+      if (tempName.trim()) {
+          onSetName(tempName.trim());
+          setShowNameModal(false);
+      }
+  };
+  
+  // Combine player achievements with mock leaderboard and sort by time (asc)
+  const sortedAchievements = [...MOCK_LEADERBOARD, ...achievements].sort((a, b) => a.timeTaken - b.timeTaken);
+
   return (
     <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-6">
       
+      {/* Name Input Modal */}
+      {showNameModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-md flex items-center justify-center pointer-events-auto">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl w-80 text-center animate-bounce-in">
+                <h2 className="text-2xl font-black text-slate-800 mb-4">欢迎来到冒险!</h2>
+                <p className="text-slate-500 mb-6 text-sm">给自己取个响亮的名字吧</p>
+                <div className="flex gap-2 mb-6">
+                    <input 
+                        type="text" 
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value)}
+                        className="flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl px-4 py-3 text-slate-800 font-bold focus:border-blue-400 outline-none"
+                        maxLength={10}
+                    />
+                    <button onClick={handleRandomizeName} className="bg-blue-100 text-blue-500 p-3 rounded-xl hover:bg-blue-200">
+                        <Dice5 size={24} />
+                    </button>
+                </div>
+                <button onClick={handleConfirmName} className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 transition-transform active:scale-95">
+                    开始旅程
+                </button>
+            </div>
+        </div>
+      )}
+
       {/* Top Bar (HUD / Stats) */}
-      <div className="flex justify-between items-start w-full pointer-events-auto relative z-20">
+      <div className="relative z-20 flex justify-between items-start w-full pointer-events-auto">
          {/* Stats (Visible in Menu) */}
          {gameState === GameState.MENU && (
-             <div className="flex gap-2 sm:gap-4">
+             <div className="flex flex-wrap gap-2 sm:gap-4">
+                 <div className="bg-white/90 backdrop-blur text-slate-700 px-3 py-2 sm:px-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-2">
+                    <span className="font-black text-xs sm:text-sm text-blue-500">{stats.playerName || 'Guest'}</span>
+                </div>
                 <div className="bg-white/90 backdrop-blur text-slate-700 px-3 py-2 sm:px-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-2">
                     <Star className="text-yellow-400 fill-yellow-400" size={18} />
                     <span className="font-bold text-sm sm:text-base">{stats.totalCoins}</span>
-                </div>
-                <div className="bg-white/90 backdrop-blur text-slate-700 px-3 py-2 sm:px-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-2">
-                    <Trophy className="text-blue-400" size={18} />
-                    <span className="font-bold text-sm sm:text-base">{stats.highScore}</span>
                 </div>
                 {/* Revive Potion Count in Menu */}
                  <div className="bg-white/90 backdrop-blur text-slate-700 px-3 py-2 sm:px-4 rounded-xl border border-blue-100 shadow-sm flex items-center gap-2">
@@ -191,7 +247,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
       )}
 
       {/* Main Menu */}
-      {gameState === GameState.MENU && !showCharSelect && !showShop && (
+      {gameState === GameState.MENU && !showCharSelect && !showShop && !showAchievements && !showNameModal && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
           <div className="max-w-md w-full bg-white/90 border border-blue-100 p-8 rounded-3xl shadow-xl text-center relative overflow-hidden ring-4 ring-blue-50 backdrop-blur-md mx-4 max-h-[90vh] overflow-y-auto">
             
@@ -230,21 +286,29 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                 </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-2">
                 <button
                 onClick={() => setShowShop(true)}
-                className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold py-4 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
+                className="flex-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 font-bold py-3 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
                 >
-                <ShoppingCart size={24} />
-                <span className="text-xs uppercase tracking-wide">商店</span>
+                <ShoppingCart size={20} />
+                <span className="text-[10px] uppercase tracking-wide">商店</span>
                 </button>
                 
                 <button
                 onClick={() => setShowCharSelect(true)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
                 >
-                <span className="text-2xl">😺</span>
-                <span className="text-xs uppercase tracking-wide">角色</span>
+                <span className="text-xl">😺</span>
+                <span className="text-[10px] uppercase tracking-wide">角色</span>
+                </button>
+
+                <button
+                onClick={() => setShowAchievements(true)}
+                className="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold py-3 rounded-2xl shadow-sm transition-all flex flex-col items-center justify-center gap-1"
+                >
+                <Medal size={20} />
+                <span className="text-[10px] uppercase tracking-wide">成就</span>
                 </button>
             </div>
             
@@ -301,6 +365,48 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
                   </div>
               </div>
           </div>
+      )}
+
+      {/* Achievement Hall of Fame Modal */}
+      {gameState === GameState.MENU && showAchievements && (
+           <div className="fixed inset-0 z-50 bg-slate-50 overflow-hidden flex flex-col pointer-events-auto">
+              <div className="flex items-center p-4 bg-white shadow-sm z-10 sticky top-0">
+                  <button onClick={() => setShowAchievements(false)} className="bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition-colors mr-4">
+                      <ArrowLeft size={24} className="text-slate-700" />
+                  </button>
+                  <h2 className="text-xl font-black text-slate-800">荣耀殿堂 (第5关)</h2>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                  <div className="max-w-2xl mx-auto space-y-4">
+                      <div className="bg-purple-100 p-4 rounded-2xl text-purple-900 text-sm font-bold text-center">
+                          只有通关第五关的勇者才能在此留名！
+                      </div>
+                      
+                      {sortedAchievements.length === 0 ? (
+                          <div className="text-center text-slate-400 mt-10">暂无通关记录，快去挑战吧！</div>
+                      ) : (
+                          sortedAchievements.map((entry, index) => (
+                              <div key={index} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center gap-4">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-white ${index === 0 ? 'bg-yellow-400' : index === 1 ? 'bg-slate-300' : index === 2 ? 'bg-orange-300' : 'bg-slate-100 text-slate-400'}`}>
+                                      {index + 1}
+                                  </div>
+                                  <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                          <span className="font-bold text-slate-800">{entry.playerName}</span>
+                                          <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">{CHARACTER_THEMES[entry.characterId]?.name || 'Unknown'}</span>
+                                      </div>
+                                      <div className="text-xs text-slate-400">{entry.date}</div>
+                                  </div>
+                                  <div className="text-right text-xs text-slate-500 flex flex-col gap-1">
+                                      <div className="font-mono font-bold text-blue-600 text-sm">{entry.timeTaken}秒</div>
+                                      <div>复活: {entry.revivesUsed} | 重试: {entry.retryCount}</div>
+                                  </div>
+                              </div>
+                          ))
+                      )}
+                  </div>
+              </div>
+           </div>
       )}
 
       {/* Character Selector Modal */}

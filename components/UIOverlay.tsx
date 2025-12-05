@@ -149,6 +149,15 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
             )}
          </div>
       </div>
+      
+      {/* Mobile Hint (Only shows for a few seconds if we had state, but static is fine for now) */}
+      {gameState === GameState.PLAYING && (
+          <div className="absolute bottom-10 left-0 right-0 text-center pointer-events-none opacity-50 animate-pulse">
+              <span className="text-slate-500 text-xs font-bold bg-white/50 px-2 py-1 rounded-full">
+                👆 点按跳跃 &nbsp;|&nbsp; 👇 下滑翻滚
+              </span>
+          </div>
+      )}
 
       {/* Main Menu */}
       {gameState === GameState.MENU && !showCharSelect && (

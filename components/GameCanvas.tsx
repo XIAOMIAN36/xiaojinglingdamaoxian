@@ -69,6 +69,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const distanceRef = useRef(0);
   const frameCountRef = useRef(0);
   
+  // Touch Handling Refs
+  const touchStartRef = useRef<{x: number, y: number} | null>(null);
+  
   const playerRef = useRef<Player>({
     x: 0, 
     y: 0,
@@ -280,21 +283,57 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
     
+    // --- Mobile Touch Logic (Tap to Jump, Swipe Down to Slide) ---
     const handleTouchStart = (e: TouchEvent) => {
         if (gameState === GameState.PAUSED) return;
-        const touchY = e.touches[0].clientY;
-        if (touchY < window.innerHeight / 2) {
-            handleInput('JUMP');
+        touchStartRef.current = {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY
+        };
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+        if (gameState === GameState.PAUSED || !touchStartRef.current) return;
+        
+        const startX = touchStartRef.current.x;
+        const startY = touchStartRef.current.y;
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        
+        const diffX = endX - startX;
+        const diffY = endY - startY;
+        
+        // Reset touch start
+        touchStartRef.current = null;
+        
+        // Swipe Threshold (e.g., 30px)
+        const SWIPE_THRESHOLD = 30;
+        
+        // Check for vertical swipe (more Y movement than X movement)
+        if (Math.abs(diffY) > SWIPE_THRESHOLD && Math.abs(diffY) > Math.abs(diffX)) {
+            if (diffY > 0) {
+                // Swipe DOWN -> SLIDE
+                handleInput('SLIDE');
+            } else {
+                // Swipe UP -> JUMP
+                handleInput('JUMP');
+            }
         } else {
-            handleInput('SLIDE');
+            // No significant swipe -> TAP -> JUMP
+            // (Also check if it wasn't a huge horizontal swipe)
+            if (Math.abs(diffX) < SWIPE_THRESHOLD) {
+                handleInput('JUMP');
+            }
         }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchend', handleTouchEnd);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [handleInput, gameState]);
 

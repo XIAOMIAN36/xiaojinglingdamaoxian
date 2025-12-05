@@ -163,6 +163,11 @@ const App: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [magnetProgress, setMagnetProgress] = useState(0);
   
+  // Revive / Achievement State
+  const [isReviving, setIsReviving] = useState(false);
+  const [hasUsedShareRevive, setHasUsedShareRevive] = useState(false);
+  const [isAchievementEligible, setIsAchievementEligible] = useState(true);
+
   // Achievement / Leaderboard Data
   const [achievements, setAchievements] = useState<AchievementEntry[]>(() => {
       const saved = localStorage.getItem('cloud_hopper_achievements');
@@ -272,6 +277,11 @@ const App: React.FC = () => {
     setStarsCollected(0);
     setMagnetProgress(0);
     
+    // Reset Revive State for new run
+    setHasUsedShareRevive(false);
+    setIsReviving(false);
+    setIsAchievementEligible(true);
+    
     // Reset or Initialize Level Run Stats
     setLevelRunStats(prev => ({
         startTime: Date.now(),
@@ -297,11 +307,29 @@ const App: React.FC = () => {
       setGameState(GameState.MENU);
       // Reset level 5 retries when quitting to menu
       setLevelRunStats({ startTime: 0, revivesUsed: 0, retryCount: 0 });
+      setHasUsedShareRevive(false);
   };
+
+  const handleShareRevive = () => {
+      // 1. Mark as used
+      setHasUsedShareRevive(true);
+      // 2. Disqualify from achievements
+      setIsAchievementEligible(false);
+      // 3. Set reviving flag
+      setIsReviving(true);
+      // 4. Resume Game
+      setGameState(GameState.PLAYING);
+      playSfx('powerup');
+      playBGM();
+  };
+
+  const handleReviveComplete = useCallback(() => {
+      setIsReviving(false);
+  }, []);
   
   const handleLevelComplete = () => {
       // Level 5 Achievement Check
-      if (currentLevel === 5) {
+      if (currentLevel === 5 && isAchievementEligible) {
           const endTime = Date.now();
           const timeTaken = Math.floor((endTime - levelRunStats.startTime) / 1000);
           
@@ -427,6 +455,8 @@ const App: React.FC = () => {
         levelConfig={currentLevelConfig}
         revivePotions={stats.revivePotions}
         onConsumeRevive={handleConsumeRevive}
+        isReviving={isReviving}
+        onReviveComplete={handleReviveComplete}
       />
       <UIOverlay 
         gameState={gameState}
@@ -450,6 +480,8 @@ const App: React.FC = () => {
         onBuyShopItem={handleBuyShopItem}
         onSetName={handleSetName}
         achievements={achievements}
+        onShareRevive={handleShareRevive}
+        hasUsedShareRevive={hasUsedShareRevive}
       />
     </div>
   );

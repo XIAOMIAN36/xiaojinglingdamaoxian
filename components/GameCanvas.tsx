@@ -19,6 +19,8 @@ interface GameCanvasProps {
   playSfx: (type: 'jump' | 'doubleJump' | 'slide' | 'coin' | 'powerup' | 'hit' | 'gameOver' | 'gameStart' | 'missionComplete' | 'levelComplete') => void;
   revivePotions: number;
   onConsumeRevive: () => void;
+  isReviving: boolean;
+  onReviveComplete: () => void;
 }
 
 // Extended particle for dust effects
@@ -60,7 +62,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   levelConfig,
   playSfx,
   revivePotions,
-  onConsumeRevive
+  onConsumeRevive,
+  isReviving,
+  onReviveComplete
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
@@ -197,6 +201,23 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
   }, [activeTheme, levelConfig, onStarUpdate, onMagnetUpdate]);
+
+  const performRevive = useCallback(() => {
+      if (!canvasRef.current) return;
+      const canvas = canvasRef.current;
+      const groundY = canvas.height - 100;
+      const p = playerRef.current;
+      
+      p.y = groundY - 200; // Drop from air
+      p.vy = 0;
+      p.isGrounded = false;
+      p.invincibleTimer = 120; // 2 seconds invincibility
+      
+      // Clear nearby obstacles
+      obstaclesRef.current = obstaclesRef.current.filter(o => o.x > p.x + 500);
+      
+      onReviveComplete();
+  }, [onReviveComplete]);
 
   const spawnGroundDecor = (x: number, groundY: number) => {
       const rand = Math.random();
@@ -422,6 +443,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.save();
     const cy = p.y + p.height / 2;
     ctx.translate(cx, cy);
+    
+    // Invincibility Effect
+    if (p.invincibleTimer > 0) {
+        if (Math.floor(p.invincibleTimer / 5) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+    }
 
     // Shield
     if (p.hasShield) {
@@ -1341,7 +1369,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     requestRef.current = requestAnimationFrame(tick);
-  }, [gameState, setGameState, onGameOver, onScoreUpdate, onStarUpdate, onMagnetUpdate, onLevelComplete, activeTheme, levelConfig, playSfx, revivePotions, onConsumeRevive]);
+  }, [gameState, setGameState, onGameOver, onScoreUpdate, onStarUpdate, onMagnetUpdate, onLevelComplete, activeTheme, levelConfig, playSfx, revivePotions, onConsumeRevive, isReviving, onReviveComplete]);
+
+  useEffect(() => {
+    if (gameState === GameState.PLAYING) {
+      if (isReviving) {
+         performRevive();
+      } else {
+         resetGame();
+      }
+    }
+  }, [gameState, isReviving, resetGame, performRevive]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -1362,12 +1400,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
   }, [tick]);
-
-  useEffect(() => {
-    if (gameState === GameState.PLAYING) {
-      resetGame();
-    }
-  }, [gameState, resetGame]);
 
   return <canvas ref={canvasRef} className="absolute inset-0 z-0 w-full h-full" />;
 };

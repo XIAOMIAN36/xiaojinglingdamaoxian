@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GameState, DailyMission, CharacterTheme, CharacterId, PlayerStats, LevelConfig, AchievementEntry } from '../types';
-import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight, ShoppingCart, Heart, Dice5, Medal } from 'lucide-react';
+import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight, ShoppingCart, Heart, Dice5, Medal, AlertTriangle } from 'lucide-react';
 import { CHARACTER_THEMES, LEVELS, SHOP_ITEMS, RANDOM_NAMES, MOCK_LEADERBOARD } from '../constants';
 
 interface UIOverlayProps {
@@ -26,6 +26,8 @@ interface UIOverlayProps {
   onBuyShopItem: (itemId: string) => void;
   onSetName: (name: string) => void;
   achievements: AchievementEntry[];
+  onShareRevive: () => void;
+  hasUsedShareRevive: boolean;
 }
 
 const CharacterAvatar = ({ theme }: { theme: CharacterTheme }) => (
@@ -94,7 +96,9 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   magnetProgress,
   onBuyShopItem,
   onSetName,
-  achievements
+  achievements,
+  onShareRevive,
+  hasUsedShareRevive
 }) => {
   const [showCharSelect, setShowCharSelect] = useState(false);
   const [showShop, setShowShop] = useState(false);
@@ -503,15 +507,31 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
             <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                <Skull size={40} className="text-red-400" />
             </div>
-            <h2 className="text-3xl font-black text-slate-800 mb-1">挑战失败</h2>
-            <p className="text-slate-400 mb-6">离通关还差一点点...</p>
+            <h2 className="text-3xl font-black text-slate-800 mb-1">你失败了</h2>
+            <p className="text-slate-500 font-bold mb-1">{stats.playerName}</p>
+            <p className="text-slate-400 mb-6 text-sm">离通关还差一点点...</p>
             
-            <div className="flex flex-col gap-2 mb-8">
+            <div className="flex flex-col gap-2 mb-6">
                 <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100 text-sm font-bold flex items-center justify-center gap-2 text-yellow-700">
                     <Star size={16} fill="currentColor" />
                     <span>进度: {starsCollected} / {currentLevelConfig.targetStars}</span>
                 </div>
             </div>
+
+            {/* Level 5 Conditional Share Revive */}
+            {currentLevelConfig.id === 5 && !hasUsedShareRevive && (
+                <div className="mb-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                     <button 
+                        onClick={onShareRevive}
+                        className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-md flex items-center justify-center gap-2 mb-1"
+                     >
+                        <Share2 size={18} /> 分享复活 (2秒无敌)
+                     </button>
+                     <div className="text-[10px] text-indigo-400 flex items-center justify-center gap-1">
+                        <AlertTriangle size={10} /> 使用此复活将不计入通关成就
+                     </div>
+                </div>
+            )}
 
             <button onClick={() => onStart(currentLevelConfig.id)} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 mb-3">
               <RotateCcw size={20} /> 重试本关

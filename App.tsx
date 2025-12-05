@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import GameCanvas from './components/GameCanvas';
 import UIOverlay from './components/UIOverlay';
@@ -186,14 +185,20 @@ const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthRef = useRef<ReturnType<typeof createSynthesizer>>(null);
 
-  useEffect(() => {
-    audioRef.current = new Audio(BGM_URL);
-    audioRef.current.loop = true;
-    audioRef.current.volume = 0.3;
-    synthRef.current = createSynthesizer();
+  // Lazy Initialize Audio to speed up initial page load
+  const initAudio = useCallback(() => {
+    if (!audioRef.current) {
+        audioRef.current = new Audio(BGM_URL);
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.3;
+    }
+    if (!synthRef.current) {
+        synthRef.current = createSynthesizer();
+    }
   }, []);
 
   const toggleAudio = () => {
+      initAudio();
       if (audioRef.current) {
           if (isMuted) {
               audioRef.current.play().catch(e => console.log("Audio play blocked", e));
@@ -206,6 +211,7 @@ const App: React.FC = () => {
   };
 
   const playBGM = () => {
+      initAudio();
       if (audioRef.current && !isMuted && audioRef.current.paused) {
           audioRef.current.play().catch(e => console.log("Audio play failed", e));
       }
@@ -213,6 +219,10 @@ const App: React.FC = () => {
 
   const playSfx = useCallback((type: 'jump' | 'doubleJump' | 'slide' | 'coin' | 'powerup' | 'hit' | 'gameOver' | 'gameStart' | 'missionComplete' | 'levelComplete') => {
     if (isMuted) return;
+    // Ensure synth is initialized (in case playSfx is called before game start, e.g. menu interaction)
+    if (!synthRef.current) {
+        synthRef.current = createSynthesizer();
+    }
     if (synthRef.current && synthRef.current[type]) {
         synthRef.current[type]();
     }
@@ -234,6 +244,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleStart = (levelId: number) => {
+    initAudio(); // Initialize audio context on user interaction
     setCurrentLevel(levelId);
     setScore(0);
     setStarsCollected(0);

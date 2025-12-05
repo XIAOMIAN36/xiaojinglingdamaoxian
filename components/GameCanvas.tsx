@@ -286,6 +286,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     // --- Mobile Touch Logic (Tap to Jump, Swipe Down to Slide) ---
     const handleTouchStart = (e: TouchEvent) => {
         if (gameState === GameState.PAUSED) return;
+        // Do not prevent default to allow browser UI to work, only prevent if in gameplay?
+        // Actually for game canvas we usually want to prevent default scrolling
+        // e.preventDefault(); 
+        
         touchStartRef.current = {
             x: e.touches[0].clientX,
             y: e.touches[0].clientY
@@ -302,12 +306,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         
         const diffX = endX - startX;
         const diffY = endY - startY;
+        const dist = Math.sqrt(diffX*diffX + diffY*diffY);
         
         // Reset touch start
         touchStartRef.current = null;
         
-        // Swipe Threshold (e.g., 30px)
-        const SWIPE_THRESHOLD = 30;
+        // Swipe Threshold (Increased to 40px to prevent accidental slides)
+        const SWIPE_THRESHOLD = 40;
+        
+        // Explicitly check for TAP (very small movement)
+        if (dist < 10) {
+            handleInput('JUMP');
+            return;
+        }
         
         // Check for vertical swipe (more Y movement than X movement)
         if (Math.abs(diffY) > SWIPE_THRESHOLD && Math.abs(diffY) > Math.abs(diffX)) {
@@ -319,8 +330,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 handleInput('JUMP');
             }
         } else {
-            // No significant swipe -> TAP -> JUMP
-            // (Also check if it wasn't a huge horizontal swipe)
+            // If it wasn't a distinct vertical swipe, treat as Tap/Jump
+            // But only if it wasn't a huge horizontal swipe (which might be accidental)
             if (Math.abs(diffX) < SWIPE_THRESHOLD) {
                 handleInput('JUMP');
             }
@@ -328,7 +339,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('touchstart', handleTouchStart);
+    // Use passive: false if we want to prevent default (scrolling)
+    // But since we have user-scalable=no in meta, we might be fine.
+    // Adding to window can be tricky.
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
@@ -805,13 +819,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             p.magnetTimer--;
             onMagnetUpdate(p.magnetTimer / MAGNET_DURATION);
         } else {
-            // Send 0 just to be safe/clear
-            // But we don't want to spam if it's already 0. 
-            // Since we don't track prev state here easily without ref, 
-            // we rely on the parent or checking if it was > 0.
-            // Simplified: we send progress every frame if > 0.
-            // If it just became 0, we can't easily detect the "edge" here without extra var.
-            // Let's just assume parent handles 0.
              if (p.magnetTimer === 0 && frameCountRef.current % 60 === 0) {
                  onMagnetUpdate(0);
              }

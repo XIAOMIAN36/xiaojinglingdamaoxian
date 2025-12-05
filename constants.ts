@@ -1,4 +1,3 @@
-
 import { CharacterTheme, LevelConfig } from "./types";
 
 export const GRAVITY = 1.2; // Increased for very fast, heavy falling

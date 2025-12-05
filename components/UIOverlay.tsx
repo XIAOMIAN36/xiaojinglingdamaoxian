@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GameState, DailyMission, CharacterTheme, CharacterId, PlayerStats, LevelConfig } from '../types';
 import { Trophy, RefreshCw, Zap, Skull, Play, RotateCcw, Pause, Home, Star, Lock, CheckCircle, Music, Music2, ArrowLeft, Share2, ArrowRight, ShoppingCart, Heart } from 'lucide-react';

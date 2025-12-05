@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useCallback } from 'react';
 import { GameState, EntityType, Player, Entity, Particle, CharacterTheme, LevelConfig } from '../types';
 import { 
